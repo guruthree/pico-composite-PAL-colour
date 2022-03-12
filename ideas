@@ -1,3 +1,7 @@
-check fft of colour burst
-purposely simplify the sinewave to a square wave
+code that cycles through frequencies on second core
+printout out in usb console
 
+the frequency you program in isn't what you get out
+if it's not at a high enough clock it doesn't work
+
+0 to 1 or a smooth sin wave doesn't seem to make a difference
