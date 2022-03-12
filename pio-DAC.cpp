@@ -23,6 +23,7 @@
 
 int dma_chan32;
 void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
+    dma_channel_set_trans_count(dma_chan32, size / 4, false);
     dma_channel_set_read_addr(dma_chan32, src, false);
     dma_channel_set_write_addr(dma_chan32, dst, true);
 //    dma_channel_wait_for_finish_blocking(dma_chan32);
@@ -69,7 +70,7 @@ int main() {
                           &channel_config32,
                           NULL, // write address
                           NULL, // read address
-                          SAMPLES_PER_LINE / 4, // number of data transfers to 
+                          0, // number of data transfers to 
                           false // start immediately
     );
 
