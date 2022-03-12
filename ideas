@@ -1,9 +1,3 @@
-the signal coming out is a bit rounded looks like capacitance
-try putting on a breadboard?
+check fft of colour burst
+purposely simplify the sinewave to a square wave
 
-or could be timing/coding issue
-
-just a colorburst with white isn't white though
-
-
-trying more multiples of 13.333 MHz?

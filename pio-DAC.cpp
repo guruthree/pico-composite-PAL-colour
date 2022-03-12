@@ -11,7 +11,7 @@
 #include <cstring>
 #include <math.h>
 
-uint8_t ADC_TABLE[70] = { 0, 4, 8, 11, 14, 18, 21, 25, 29, 31, 33, 36, 39, 43, 46, 50, 53, 58, 61, 71, 75, 78, 82, 85, 89, 91, 95, 98, 101, 105, 109, 112, 116, 119, 132, 136, 140, 143, 147, 151, 154, 157, 159, 161, 164, 168, 172, 175, 179, 182, 192, 189, 199, 203, 206, 209, 213, 217, 220, 223, 224, 227, 231, 235, 238, 241, 245, 249, 252, 255 };
+uint8_t ADC_TABLE[70] = { 0, 3, 6, 11, 14, 18, 21, 25, 28, 31, 32, 35, 39, 43, 46, 50, 53, 57, 61, 70, 74, 77, 81, 84, 88, 92, 95, 96, 100, 105, 108, 112, 115,119,123, 126, 139, 142, 146, 149, 154, 156, 159, 161, 164, 167, 171, 174, 178, 181, 185, 189, 198, 202, 205, 209, 212, 216, 220, 223 ,224, 227, 230, 234, 237, 241, 244, 248, 251, 255 };
 
 uint8_t levelConversion(uint8_t in) {
     return ADC_TABLE[in];
@@ -19,11 +19,6 @@ uint8_t levelConversion(uint8_t in) {
 }
 
 void core1_entry();
-
-// oops hard coded against frequency...
-//#define XRESOLUTION 1000
-//#define XDATA_START 232 // 240
-//#define XDATA_END (XDATA_START+XRESOLUTION)
 
 #define YRESOLUTION 250
 #define YDATA_START 44
@@ -35,7 +30,8 @@ int main() {
 //    set_sys_clock_khz(160000, true); // 160 MHz
 //    set_sys_clock_khz(284000, true); // top speed: 284 MHz (282?)
 //    set_sys_clock_khz(266000, true);
-    set_sys_clock_khz(142000, true);
+    set_sys_clock_khz(142000, true); // best multiple to sub-fraction signal?
+//    set_sys_clock_khz(133000, true);
 
     xosc_init(); // hardware oscillator for more stable clocks?
 
@@ -55,16 +51,10 @@ int main() {
 
     uint8_t frequency_divider = 2;
     uint8_t frequency_divider_frac = 0;
-//    uint8_t frequency_divider = 12;
-//    uint8_t frequency_divider_frac = 129;
     float DACfreq = clock_get_hz(clk_sys) / (frequency_divider + frequency_divider_frac/256); // keep a nice ratio of system clock?
-//    float DACfreq = 4433618.75 * 4;
-//const uint16_t XRESOLUTION = DACfreq / 1e6 * 50;
-//const uint16_t XDATA_START = DACfreq / 1e6 * 12;
-//const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
     uint16_t samplesLine = 64 * DACfreq / 1000000; // 64 microseconds
-    //float divpervolt = 70 / 1.02; // 0.975659 is about the practical highest output
-    float divpervolt = 255 / 1.02;
+//    float divpervolt = 255 / 1.02; // no ADC scaling!
+    float divpervolt = 70 / 1.02; // ADC scaling
     float syncVolts = -0.3;
     float blankVolts = 0.0; 
     float blackVolts =  0.0;
@@ -166,6 +156,7 @@ int main() {
         line623[i] = levelBlank;
 //        aline[i] = levelWhite; // white except for horizontal sync
         aline[i] = levelBlank; // just blank
+//        aline[i] = syncVolts;
     }
 
     float COS[samplesLine];
@@ -181,6 +172,8 @@ int main() {
     for (i = 0; i < samplesBurst; i++) {
         burstOdd[i] = levelConversion(levelColorU*COS[i] + levelBlankU); // with out addition it would try and be negative
         burstEven[i] = levelConversion(levelColorU*SIN[i] + levelBlankU);
+//        burstOdd[i] = levelConversion(60);
+//        burstEven[i] = levelConversion(60);
     }
 
 
@@ -262,19 +255,19 @@ int main() {
 
 
     float r = 0.5;
-    float g = 0.5;
-    float b = 0.5;
+    float g = 0;
+    float b = 0;
     float y = 0.299 * r + 0.587 * g + 0.114 * b; 
     float u = 0.493 * (b - y);
     float v = 0.877 * (r - y);
     for (i = samplesHsync+samplesBackPorch+(0.75*(DACfreq / 1000000)); i < samplesLine-samplesFrontPorch-(0.75*(DACfreq / 1000000)); i++) {
         // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
-//        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] + v * COS[i]));
+        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] + v * COS[i]));
         // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
-//        alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
+        alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
 
-        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU*0.5);
-        alineEven[i] = levelConversion(levelBlankU + levelWhiteU*0.5);
+//        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU);
+//        alineEven[i] = levelConversion(levelBlankU + levelWhiteU);
     }
 
 
@@ -318,8 +311,8 @@ int main() {
     alllines[624] = line4;
     alllines[625] = line4;
 
-//    for (i = YDATA_START; i < YDATA_END; i+=1) {
-    for (i = YDATA_START+50; i < YDATA_START+100; i+=1) {
+    for (i = YDATA_START; i < YDATA_END; i+=1) {
+//    for (i = YDATA_START+50; i < YDATA_START+100; i+=1) {
         alllines[i] = aline; // both fields
         alllines[i+YDATA_NEXTFIELD] = aline;
     }
