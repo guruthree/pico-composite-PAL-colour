@@ -10,6 +10,12 @@
 #include <cstring>
 #include <math.h>
 
+uint8_t ADC_TABLE[70] = { 0, 3, 7, 11, 14, 18, 21, 25, 28, 31, 32, 36, 39, 43, 46, 50, 53, 57, 61, 70, 74, 77, 81, 84, 88, 92, 95, 96, 100, 105, 108, 111, 115, 129, 132, 136, 140, 143, 147, 150, 154, 157, 159, 161, 164, 168, 171, 175, 179, 182, 186, 189, 198, 202, 206, 210, 213, 217, 220, 223, 224, 227, 230, 234, 237, 241, 244, 248, 252, 255 };
+
+uint8_t levelConversion(uint8_t in) {
+    return ADC_TABLE[in];
+}
+
 void core1_entry();
 
 // oops hard coded against frequency...
@@ -24,7 +30,7 @@ void core1_entry();
 
 int main() {
 //    stdio_init_all();
-    set_sys_clock_khz(160000, true); // 160 MHz
+    set_sys_clock_khz(222000, true); // 160 MHz
 
     gpio_init(18);
     gpio_init(19);
@@ -40,23 +46,32 @@ int main() {
     sleep_ms(1000);
     gpio_put(20, 1); // B
 
-    float DACfreq = 16e6; // keep a nice ratio of system clock?
+    uint8_t frequency_divider = 10;
+    uint8_t frequency_divider_frac = 0;
+//    uint8_t frequency_divider = 12;
+//    uint8_t frequency_divider_frac = 129;
+    float DACfreq = clock_get_hz(clk_sys) / (frequency_divider + frequency_divider_frac/256); // keep a nice ratio of system clock?
 const uint16_t XRESOLUTION = DACfreq / 1e6 * 50;
 const uint16_t XDATA_START = DACfreq / 1e6 * 12;
 const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
     uint16_t samplesLine = 64 * DACfreq / 1000000; // 64 microseconds
-    float Vcc = 1.02; // max VCC of DAC
-    float dacPerVolt = 255.0 / Vcc;
+//    float Vcc = 1.02; // max VCC of DAC
+//    float dacPerVolt = 255.0 / Vcc;
+    float divpervolt = 70 / 1.02; // 0.975659 is about the practical highest output
     float syncVolts = -0.3;
     float blankVolts = 0.0; 
     float blackVolts =  0.0;
     float whiteVolts = 0.4; // anyhigher and integer wrapping?
     uint8_t levelSync = 0;
-    uint8_t levelBlank = (blankVolts - syncVolts) * dacPerVolt + 0.5;
-    uint8_t levelBlack = (blackVolts - syncVolts) * dacPerVolt + 0.5;
-    uint8_t levelWhite = (whiteVolts - syncVolts) * dacPerVolt + 0.5;
+    uint8_t levelBlank = ADC_TABLE[uint8_t((blankVolts - syncVolts) * divpervolt + 0.5)];
+    uint8_t levelBlack = ADC_TABLE[uint8_t((blackVolts - syncVolts) * divpervolt + 0.5)];
+    uint8_t levelWhite = ADC_TABLE[uint8_t((whiteVolts - syncVolts) * divpervolt + 0.5)];
     float colourCarrier = 4433618.75;
-    float levelColor = 0.2 * dacPerVolt + 0.5; // scaled and used to add on top of other signal
+//    float colourCarrier = 4.4386e6;
+    float levelBlankU = (blankVolts - syncVolts) * divpervolt + 0.5;
+    float levelWhiteU = (whiteVolts - syncVolts) * divpervolt + 0.5;
+    float levelColorU = 0.233 * divpervolt + 0.5; // scaled and used to add on top of other signal
+    // U suffix indicates it hasn't been ADC converted
 
 
 
@@ -64,7 +79,7 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
     PIO pio = pio0;
     int sm = 0;
     int offset = pio_add_program(pio, &dac_program);
-    dac_program_init(pio, sm, offset, 0, DACfreq);
+    dac_program_init(pio, sm, offset, 0, frequency_divider, frequency_divider_frac);
 
     int dma_chan = dma_claim_unused_channel(true);
     dma_channel_config channel_config = dma_channel_get_default_config(dma_chan);
@@ -107,6 +122,8 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
     uint8_t line3[samplesLine];
     uint8_t line4[samplesLine];
     uint8_t line6[samplesLine];
+    uint8_t line6odd[samplesLine];
+    uint8_t line6even[samplesLine];
     uint8_t line313[samplesLine];
     uint8_t line318[samplesLine];
     uint8_t line623[samplesLine];
@@ -142,8 +159,8 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
     uint8_t burstOdd[samplesBurst]; // for odd lines
     for (i = 0; i < samplesBurst; i++) {
         float x = i/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
-        burstOdd[i] = levelColor*cos(x) + levelBlank; // with out addition it would try and be negative
-        burstEven[i] = levelColor*sin(x) + levelBlank;
+        burstOdd[i] = levelConversion(levelColorU*cos(x) + levelBlankU); // with out addition it would try and be negative
+        burstEven[i] = levelConversion(levelColorU*sin(x) + levelBlankU);
     }
     float COS[XRESOLUTION];
     float SIN[XRESOLUTION];
@@ -207,6 +224,11 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
         aline[i+2] = levelWhite;
     }*/
 
+    memcpy(line6odd, line6, samplesLine);
+    memcpy(line6even, line6, samplesLine);
+
+    memcpy(line6odd+samplesUntilBurst, burstOdd, samplesBurst);
+    memcpy(line6even+samplesUntilBurst, burstEven, samplesBurst);
 
     memcpy(alineOdd, aline, samplesLine);
     memcpy(alineEven, aline, samplesLine);
@@ -224,15 +246,15 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
 //    }
 
 
-    float r = 1;
-    float g = 0;
+    float r = 0;
+    float g = 0.5;
     float b = 0;
     float y = 0.299 * r + 0.587 * g + 0.114 * b; 
     float u = 0.493 * (b - y);
     float v = 0.877 * (r - y);
     for (i = 0; i < XRESOLUTION; i++) {
-        alineOdd[XDATA_START+i] = levelBlank + levelWhite * (y +  u * SIN[i] + v * COS[i]);
-        alineEven[XDATA_START+i] =  levelBlank + levelWhite * (y + u * SIN[i] - v * COS[i]);
+        alineOdd[XDATA_START+i] = levelConversion(levelBlankU + levelWhiteU * (y +  u * SIN[i] + v * COS[i]));
+        alineEven[XDATA_START+i] =  levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
     }
 
 
@@ -249,7 +271,13 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
         alllines[i] = line6;
     }
     for (i = 23; i < 311; i++) { // data
-        alllines[i] = line6;
+//        alllines[i] = line6;
+        if (i & 1) { // odd
+            alllines[i] = line6odd;
+        }
+        else {
+            alllines[i] = line6even;
+        }
     }
     alllines[311] = line4;
     alllines[312] = line4;
@@ -269,8 +297,8 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
     alllines[624] = line4;
     alllines[625] = line4;
 
-    for (i = YDATA_START; i < YDATA_END; i+=1) {
-//    for (i = YDATA_START+50; i < YDATA_START+100; i+=1) {
+//    for (i = YDATA_START; i < YDATA_END; i+=1) {
+    for (i = YDATA_START+50; i < YDATA_START+100; i+=1) {
         alllines[i] = aline; // both fields
         alllines[i+YDATA_NEXTFIELD] = aline;
     }
