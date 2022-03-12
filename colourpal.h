@@ -11,14 +11,14 @@ const uint16_t SAMPLES_PER_LINE = 64 * DAC_FREQ / 1e6;
 const uint16_t SAMPLES_GAP = 4.7 * DAC_FREQ / 1e6;
 const uint16_t SAMPLES_SHORT_PULSE = 2.35 * DAC_FREQ / 1e6;
 const uint16_t SAMPLES_HSYNC = 4.7 * DAC_FREQ / 1e6;
-const uint16_t SAMPLES_BACK_PORCH = 5.7 * DAC_FREQ / 1e6;
+const uint16_t SAMPLES_BACK_PORCH = 5.6 * DAC_FREQ / 1e6;
 const uint16_t SAMPLES_FRONT_PORCH = 2 * DAC_FREQ / 1e6;
 const uint16_t SAMPLES_UNTIL_BURST = 5.6 * DAC_FREQ / 1e6; // burst starts at this time
-const uint16_t SAMPLES_BURST = 2.7 * DAC_FREQ / 1e6 + 0.5; // we may want this to be divisble by 4 at some point?
+const uint16_t SAMPLES_BURST = 2.8 * DAC_FREQ / 1e6; // we may want this to be divisble by 4 at some point?
 const uint16_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2;
 
 // why are g and r flipped? who knows...
-void rgb2yuv(float r, float g, float b, float &y, float &u, float &v) {
+void rgb2yuv(float g, float r, float b, float &y, float &u, float &v) {
     y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
     u = 0.493 * (b - y);
     v = 0.877 * (r - y);
@@ -176,7 +176,7 @@ class ColourPal {
         void createColourBars() {
 
             uint16_t ioff = SAMPLES_HSYNC + SAMPLES_BACK_PORCH + (1*(DAC_FREQ / 1000000));
-            uint16_t ioff2 = ioff - 4;
+            uint16_t ioff2 = ioff - 5;
             uint16_t irange = SAMPLES_PER_LINE - SAMPLES_FRONT_PORCH-(1*(DAC_FREQ / 1000000)) - ioff;
             for (uint16_t i = ioff; i < ioff + irange; i++) {
 
@@ -258,7 +258,7 @@ while (true) {
             }
 
 dma_channel_wait_for_finish_blocking(dma_chan);
-            gpio_put(18, led = !led); // not flashing as it should be?
+            gpio_put(18, led = !led); // not flashing as it should be? without this here for a tiny delay it doesn't work!?
             currentline++;
             if (currentline == 313) {
                 currentline = 1;
