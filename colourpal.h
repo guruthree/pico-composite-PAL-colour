@@ -265,6 +265,7 @@ class ColourPal {
 
         void __time_critical_func(dmaHandler)() {
 
+uint16_t scroll = 8;
 while (true) {
             switch (currentline) {
                 case 1 ... 2:
@@ -365,21 +366,23 @@ dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count
                       
                     // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is / 2
                     uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
-                    idx = idx + 3; // shuffle over for a more interesting image for now...
+                    idx = idx + scroll; // shuffle over for a more interesting image for now...
+
 
 //                    for (uint16_t i = 0; i < irange; i += SAMPLES_PER_PIXEL) { // irange
-                    for (uint16_t i = 0; i < (SAMPLES_PER_PIXEL*14); i += SAMPLES_PER_PIXEL) {
-                        y = (*idx >> 1) & 0b1111000; // y * 8
-                        u = (*idx << 3) & 0b1100000; // u * 32
-                        v = (*(idx++) << 5) & 0b1100000;
-                        // make y, u, v out of 127
+//                    for (uint16_t i = 0; i < (SAMPLES_PER_PIXEL*14); i += SAMPLES_PER_PIXEL) {
+                    for (uint16_t i = SAMPLES_PER_PIXEL*scroll; i < (SAMPLES_PER_PIXEL*(14+scroll)); i += SAMPLES_PER_PIXEL) {
+                        y = (*idx >> 1) & 0b01111000; // y * 8
+                        u = (*idx << 3) & 0b01100000; // u * 32
+                        v = (*(idx++) << 5) & 0b01100000; // u * 32
+                        // make y, u, v out of 127... these may be negative, so this could be an issue
 //                        y = y * 8;
 //                        u = u * 32;
 //                        v = v * 32; 
 
                         for (uint16_t dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL; dmai2++) { // SAMPLES_PER_PIXEL
                             // ioff added to the buffer earlier
-                            dmatargetbuffer[dmai2] =  levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128 ;
+                            dmatargetbuffer[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128 ;
                         }
                     }
 
@@ -405,7 +408,11 @@ dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count
             currentline++;
             if (currentline == 313) {
                 currentline = 1;
+//scroll++;
+//if (scroll == XRESOLUTION-14)
+//scroll =0;
             }
+
 } // while (true)
 
 
