@@ -79,15 +79,12 @@ class ColourPal {
 
         // for colour
         const float COLOUR_CARRIER = 4433618.75; // this needs to divide in some fashion into the DAC_FREQ
-//        int32_t COS2[SAMPLES_COLOUR];
-//        int32_t SIN2[SAMPLES_COLOUR];
         // the colour burst
         uint8_t burstOdd[SAMPLES_BURST]; // for odd lines
         uint8_t burstEven[SAMPLES_BURST]; // for even lines
 
         uint8_t colourbarsOdd_B[SAMPLES_COLOUR];
         uint8_t colourbarsEven_B[SAMPLES_COLOUR];
-
 
         uint8_t* buf = NULL; // image data we are displaying
         uint32_t currentline = 1;
@@ -211,14 +208,6 @@ class ColourPal {
             memcpy(line6even_A + SAMPLES_FRONT_PORCH + SAMPLES_UNTIL_BURST + SAMPLES_DEAD_SPACE, burstEven, SAMPLES_BURST);
         }
 
-/*        void calculateCarrier() {
-            for (uint32_t i = 0; i < SAMPLES_COLOUR; i++) {
-                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
-                COS2[i] = levelWhite*cosf(x); 
-                SIN2[i] = levelWhite*sinf(x); 
-            }
-        }*/
-
         void createColourBars() {
 
             memset( colourbarsOdd_B, levelBlank, SAMPLES_COLOUR);
@@ -248,6 +237,15 @@ class ColourPal {
                 int32_t COS2 = levelWhite*cosf(x); 
                 int32_t SIN2 = levelWhite*sinf(x);
 
+/*            if (COS2 > 0)
+            COS2 = levelWhite;
+            else
+            COS2 = -levelWhite;
+            if (SIN2 > 0)
+            SIN2 = levelWhite;
+            else
+            SIN2 = -levelWhite;*/
+
                 // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
                 // +- cos is flipped...?
                 colourbarsOdd_B[i]  = levelBlank + (y * levelWhite + u * SIN2 - v * COS2) / 128;
@@ -267,12 +265,20 @@ class ColourPal {
             uint8_t backbuffer_B[SAMPLES_COLOUR];
             memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
 
-        int32_t COS3[15];
-        int32_t SIN3[15];
-        for (uint32_t i = 0; i < 15; i++) {
+        int32_t __attribute__((__aligned__(4))) COS3[30];
+        int32_t __attribute__((__aligned__(4))) SIN3[30];
+        for (uint32_t i = 0; i < 30; i++) {
             float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
             COS3[i] = levelWhite*cosf(x); 
             SIN3[i] = levelWhite*sinf(x); 
+/*            if (COS3[i] > 0)
+            COS3[i] = levelWhite;
+            else
+            COS3[i] = -levelWhite;
+            if (SIN3[i] > 0)
+            SIN3[i] = levelWhite;
+            else
+            SIN3[i] = -levelWhite;*/
         }
 
 while (true) {
@@ -382,23 +388,24 @@ while (true) {
 
                     // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is divided by 2
                     uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
+                    uint32_t dmai2;
 
 //                    for (uint32_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
-                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*37); i += SAMPLES_PER_PIXEL-1) {
+                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*38); i += SAMPLES_PER_PIXEL-1) {
+//                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*59); i += SAMPLES_PER_PIXEL-1) {
                         // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
                         // make y, u, v out of 127
                         y = (*idx >> 1) & 0b01100000;
                         u = (((*idx >> 3) & 7) - 3) << 5;
                         v = ((*(idx++) & 7) - 3) << 5;
-                        // make y, u, v out of 127
 
-                        for (uint32_t dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) { // SAMPLES_PER_PIXEL
-//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128;
+                        for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) { // SAMPLES_PER_PIXEL
+                            // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
+//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * COS3[dmai2-i]) / 128;
 
+                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
 
-                            // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle
-                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * COS3[dmai2-i]) / 128;
-
+//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * currentline) / 128;
 
 //                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * currentline + dmavfactor * v * currentline) / 128;
 //                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite) / 128;
