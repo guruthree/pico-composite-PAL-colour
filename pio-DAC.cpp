@@ -58,6 +58,9 @@ int main() {
     gpio_put(20, 1); // B
 
 
+    gpio_init(26); // A0
+    gpio_set_dir(26, GPIO_OUT);
+    gpio_put(26, 0);
 
     dma_chan32 = dma_claim_unused_channel(true);
     dma_channel_config channel_config32 = dma_channel_get_default_config(dma_chan32);
