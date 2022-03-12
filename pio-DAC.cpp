@@ -3,6 +3,7 @@
 #include "hardware/pio.h"
 #include "hardware/dma.h"
 #include "hardware/clocks.h"
+#include "hardware/xosc.h"
 #include "dac.pio.h"
 
 #include <cstdio>
@@ -33,6 +34,8 @@ int main() {
 //    set_sys_clock_khz(160000, true); // 160 MHz
 //    set_sys_clock_khz(222000, true);
     set_sys_clock_khz(200000, true);
+
+    xosc_init(); // hardware oscillator for more stable clocks?
 
     gpio_init(18);
     gpio_init(19);
@@ -133,18 +136,18 @@ int main() {
     uint8_t alineOdd[samplesLine];
     uint8_t alineEven[samplesLine];
 
-    uint16_t samplesGap = 4.7 * DACfreq / 1000000;
-    uint16_t samplesShortPulse = 2.35 * DACfreq / 1000000;
-    uint16_t samplesHsync = 4.85 * DACfreq / 1000000;
-    uint16_t samplesBackPorch = 5.7 * DACfreq / 1000000;
-    uint16_t samplesFrontPorch = 1.65 * DACfreq / 1000000;
-    uint16_t samplesUntilBurst = 5.25 * DACfreq / 1000000; // burst starts at this time
-    uint16_t samplesBurst = 2.8 * DACfreq / 1000000;
+    uint32_t samplesGap = 4.7 * DACfreq / 1000000;
+    uint32_t samplesShortPulse = 2.35 * DACfreq / 1000000;
+    uint32_t samplesHsync = 4.85 * DACfreq / 1000000;
+    uint32_t samplesBackPorch = 5.7 * DACfreq / 1000000;
+    uint32_t samplesFrontPorch = 1.65 * DACfreq / 1000000;
+    uint32_t samplesUntilBurst = 5.25 * DACfreq / 1000000; // burst starts at this time
+    uint32_t samplesBurst = 2.8 * DACfreq / 1000000;
 
-    uint16_t halfLine = samplesLine/2;
+    uint32_t halfLine = samplesLine/2;
 
     // sync is lower, blank is in the middle
-    uint16_t i;
+    uint32_t i;
     for (i = 0; i < samplesLine; i++) {
         line1[i] = levelSync;
         line3[i] = levelSync;
@@ -165,8 +168,8 @@ int main() {
         SIN[i] = sin(x); // even lines
     }
 
-    uint8_t burstEven[samplesBurst]; // for even lines
     uint8_t burstOdd[samplesBurst]; // for odd lines
+    uint8_t burstEven[samplesBurst]; // for even lines
     for (i = 0; i < samplesBurst; i++) {
         burstOdd[i] = levelConversion(levelColorU*COS[i] + levelBlankU); // with out addition it would try and be negative
         burstEven[i] = levelConversion(levelColorU*SIN[i] + levelBlankU);
@@ -215,7 +218,7 @@ int main() {
 //        aline[i] = levelBlank+i/8;
 //    }
     for (i = samplesHsync+samplesBackPorch; i < samplesLine-samplesFrontPorch; i++) {
-        aline[i] = levelWhite;
+//        aline[i] = levelWhite;
     }
 
     // effective 'resolution' 999x260, but vertical distinction, it's more like 333x250
@@ -254,10 +257,12 @@ int main() {
     float y = 0.299 * r + 0.587 * g + 0.114 * b; 
     float u = 0.493 * (b - y);
     float v = 0.877 * (r - y);
-    uint16_t at = 0;
+    uint32_t at = 0;
     for (i = samplesHsync+samplesBackPorch; i < samplesLine-samplesFrontPorch; i++) {
-        alineOdd[i] = levelConversion(levelBlankU + levelWhiteU * (y +  u * SIN[at] + v * COS[at]));
-        alineEven[i] =  levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[at] - v * COS[at]));
+        // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
+        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] + v * COS[i]));
+        // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
+        alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
         at++;
     }
 
@@ -274,7 +279,7 @@ int main() {
     for (i = 6; i < 23; i++) {
         alllines[i] = line6;
     }
-    for (i = 23; i < 311; i++) { // data
+    for (i = 23; i < 310; i++) { // data
 //        alllines[i] = line6;
         if (i & 1) { // odd
             alllines[i] = line6odd;
@@ -283,6 +288,7 @@ int main() {
             alllines[i] = line6even;
         }
     }
+    alllines[310] = line4; // 304 lines of picture for pal non-interlace
     alllines[311] = line4;
     alllines[312] = line4;
     alllines[313] = line313;
