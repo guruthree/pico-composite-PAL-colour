@@ -57,6 +57,7 @@ int main() {
     uint8_t frequency_divider_frac = 0;
 
     DACfreq = clock_get_hz(clk_sys) / (frequency_divider + frequency_divider_frac/256); // keep a nice ratio of system clock?
+//printf("%0.2f\n", DACfreq);
     samplesLine = 64 * DACfreq / 1000000; // 64 microseconds
     float divpervolt = 70 / 1.02; // ADC scaling
     syncVolts = -0.3;
@@ -109,7 +110,7 @@ int main() {
 
 
     multicore_launch_core1(core1_entry);
-//    while (1) { sleep_us(1); }
+//    while (1) { sleep_us(1); } // need this for USB!
 
 //    core1_entry();
 }
@@ -177,9 +178,11 @@ void populateLines(uint8_t line1[], uint8_t line3[], uint8_t line4[], uint8_t li
 
 void calculateCarrier(float colourCarrier, float COS[], float SIN[]) {
     for (uint32_t i = 0; i < samplesLine; i++) {
-        float x = i/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
-        COS[i] = cos(x); // odd lines
-        SIN[i] = sin(x); // even lines
+        float x = float(i)/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
+        COS[i] = cosf(x); // odd lines
+        SIN[i] = sinf(x); // even lines
+//COS[i] = 0;
+//SIN[i] = 0;
 /*        if (COS[i] > 0) // square wave approximation
             COS[i] = 1;
         else
@@ -200,7 +203,6 @@ void populateBurst(float COS[], float SIN[], uint8_t burstOdd[], uint8_t burstEv
 
     memcpy(line6odd+samplesUntilBurst, burstOdd, samplesBurst);
     memcpy(line6even+samplesUntilBurst, burstEven, samplesBurst);
-
     memcpy(alineOdd+samplesUntilBurst, burstOdd, samplesBurst);
     memcpy(alineEven+samplesUntilBurst, burstEven, samplesBurst);
 }
@@ -213,12 +215,14 @@ void core1_entry() {
 //    float colourCarrier = 4.88e6;
 // 4.88e6 on the inside, 5.15e6 on the outside ( while 1us delay, 200 mhz sysclock)
 // 5 to 5.39 - 5.09 to 5.10 or 5.17 to 5.18
-    float colourCarrier = 5.18e6;
+//    float colourCarrier = 5.18e6; // - OK with no loop and half line only
+//    float colourCarrier = 2e6;
+    float colourCarrier = 5.165e6;
 
-    float r = 0.5;
-    float g = 0;
-    float b = 0;
-    float y = 0.299 * r + 0.587 * g + 0.114 * b; 
+    float r = 0.9;
+    float g = 0.9;
+    float b = 0.0;
+    float y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
     float u = 0.493 * (b - y);
     float v = 0.877 * (r - y);
 
@@ -318,7 +322,7 @@ void core1_entry() {
         }
         else {
 
-colourCarrier += 1e3;
+//colourCarrier += 2e5;
 
             resetLines(line1, line3, line4, line6, line313, aline); // initialise arrays
             populateLines(line1, line3, line4, line6, line313, aline, line6odd, line6even, alineOdd, alineEven); // basic black and white PAL stuff
@@ -331,6 +335,12 @@ colourCarrier += 1e3;
                 alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] + v * COS[i]));
                 // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
                 alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
+//        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU);*2
+//        alineEven[i] = levelConversion(levelBlankU + levelWhiteU);
+
+//printf("%i, %0.8f, %0.8f\n", i, levelBlankU + levelWhiteU * (y + u * SIN[i] + v * COS[i]), levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
+//printf("%i, %i, %i\n", i, alineOdd[i+300], alineEven[i+300]);
+//sleep_ms(1);
             }
 
             active = true;
@@ -341,7 +351,7 @@ colourCarrier += 1e3;
         }
 
 
-        if (numframes++ == 150) { active = false; }
+//        if (numframes++ == 150) { active = false; }
     
     }
 }

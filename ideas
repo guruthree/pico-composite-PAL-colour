@@ -1,7 +1,8 @@
-code that cycles through frequencies on second core
-printout out in usb console
+forget cycling for now, pick something from the middle that was roughly ok
 
-the frequency you program in isn't what you get out
-if it's not at a high enough clock it doesn't work
+instead play with the sin/cos stuff
 
-0 to 1 or a smooth sin wave doesn't seem to make a difference
+what does it look like without the colour burst?
+
+is the phase of the wave correct?
+
