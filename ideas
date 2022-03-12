@@ -1,11 +1,9 @@
-sampling issue?
+the signal coming out is a bit rounded looks like capacitance
+try putting on a breadboard?
 
-DAC is actually square a little flat
-maybe plotting like this could reveal some issue?
+or could be timing/coding issue
+
+just a colorburst with white isn't white though
 
 
-is the tiny2040 using the external oscillator by default?
-https://raspberrypi.github.io/pico-sdk-doxygen/group__hardware__xosc.html
-
-smoothing cap?
-run extra slow to check on picoscope?
+trying more multiples of 13.333 MHz?

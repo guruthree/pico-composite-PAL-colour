@@ -33,8 +33,9 @@ void core1_entry();
 int main() {
 //    stdio_init_all();
 //    set_sys_clock_khz(160000, true); // 160 MHz
-//    set_sys_clock_khz(284000, true); // top speed: 284 MHz
-    set_sys_clock_khz(266000, true);
+//    set_sys_clock_khz(284000, true); // top speed: 284 MHz (282?)
+//    set_sys_clock_khz(266000, true);
+    set_sys_clock_khz(142000, true);
 
     xosc_init(); // hardware oscillator for more stable clocks?
 
@@ -52,11 +53,12 @@ int main() {
     sleep_ms(1000);
     gpio_put(20, 1); // B
 
-    uint8_t frequency_divider = 15;
+    uint8_t frequency_divider = 2;
     uint8_t frequency_divider_frac = 0;
 //    uint8_t frequency_divider = 12;
 //    uint8_t frequency_divider_frac = 129;
     float DACfreq = clock_get_hz(clk_sys) / (frequency_divider + frequency_divider_frac/256); // keep a nice ratio of system clock?
+//    float DACfreq = 4433618.75 * 4;
 //const uint16_t XRESOLUTION = DACfreq / 1e6 * 50;
 //const uint16_t XDATA_START = DACfreq / 1e6 * 12;
 //const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
@@ -147,7 +149,7 @@ int main() {
     uint32_t samplesHsync = 4.7 * DACfreq / 1000000;
     uint32_t samplesBackPorch = 5.7 * DACfreq / 1000000;
     uint32_t samplesFrontPorch = 2 * DACfreq / 1000000;
-    uint32_t samplesUntilBurst = 5 * DACfreq / 1000000; // burst starts at this time
+    uint32_t samplesUntilBurst = 5.6 * DACfreq / 1000000; // burst starts at this time
     uint32_t samplesBurst = 2.7 * DACfreq / 1000000;
 
     uint32_t halfLine = samplesLine/2;
@@ -180,6 +182,17 @@ int main() {
         burstOdd[i] = levelConversion(levelColorU*COS[i] + levelBlankU); // with out addition it would try and be negative
         burstEven[i] = levelConversion(levelColorU*SIN[i] + levelBlankU);
     }
+
+
+    // over drive on the way up
+/*    for (i = samplesBurst-1; i > 1; i--) {
+        if (burstOdd[i-1] < burstEven[i]) {
+            burstOdd[i-1]++;
+        }
+        if (burstEven[i-1] < burstEven[i]) {
+            burstEven[i-1]++;
+        }
+    }*/
 
     for (i = halfLine-samplesGap-1; i < halfLine; i++) { // broad sync x2
         line1[i] = levelBlank;
@@ -249,19 +262,19 @@ int main() {
 
 
     float r = 0.5;
-    float g = 0;
-    float b = 0;
+    float g = 0.5;
+    float b = 0.5;
     float y = 0.299 * r + 0.587 * g + 0.114 * b; 
     float u = 0.493 * (b - y);
     float v = 0.877 * (r - y);
     for (i = samplesHsync+samplesBackPorch+(0.75*(DACfreq / 1000000)); i < samplesLine-samplesFrontPorch-(0.75*(DACfreq / 1000000)); i++) {
         // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
-        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] + v * COS[i]));
+//        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] + v * COS[i]));
         // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
-        alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
+//        alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
 
-//        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU*0.5);
-//        alineEven[i] = levelConversion(levelBlankU + levelWhiteU*0.5);
+        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU*0.5);
+        alineEven[i] = levelConversion(levelBlankU + levelWhiteU*0.5);
     }
 
 
