@@ -1,11 +1,6 @@
-convert to use integer maths?
-lookup table for RGB -> YUV?
 
-some issue with reading from large bmp array?
-lower colour depth? store as yuv?
-store in flash memory?
-YYYYUUVV?
-indexed colour?
+YYYYUUVV
+
 
 
 clocked to fast to access flash memory?

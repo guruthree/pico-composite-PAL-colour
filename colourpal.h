@@ -72,6 +72,8 @@ class ColourPal {
         // the next line coming up
 //        uint8_t bufferOdd[SAMPLES_PER_LINE];
 //        uint8_t bufferEven[SAMPLES_PER_LINE];
+//        uint8_t *bufferOdd = NULL;
+//        uint8_t *bufferEven = NULL;
 
         uint8_t* buf = NULL; // image data we are displaying
         uint16_t currentline = 1;
@@ -128,8 +130,8 @@ class ColourPal {
 
 
             // display a test card by default
-//            this->setBuf(test_card_f);
-            setBuf((uint8_t*)1);
+            this->setBuf(test_card_f);
+//            setBuf((uint8_t*)1);
         }
 
         void resetLines() {
@@ -230,8 +232,6 @@ class ColourPal {
         void dmaHandler() {
         uint8_t bufferOdd[SAMPLES_PER_LINE];
         uint8_t bufferEven[SAMPLES_PER_LINE];
-            memcpy(bufferOdd, line6odd, SAMPLES_PER_LINE);
-            memcpy(bufferEven, line6even, SAMPLES_PER_LINE);
 
 while (true) {
             switch (currentline) {
@@ -255,9 +255,11 @@ while (true) {
                 case YDATA_START ... YDATA_END: // in the absence of anything else, empty lines
                     if (currentline & 1) { // odd
                         dma_channel_set_read_addr(dma_chan, bufferOdd, true);
+//                        free(bufferEven);
                     }
                     else {
                         dma_channel_set_read_addr(dma_chan, bufferEven, true);
+//                        free(bufferOdd);
                     }
                     break;
                 case YDATA_END+1 ...309:
@@ -275,13 +277,16 @@ while (true) {
                     break;
             }
 
+if (currentline >= YDATA_START - 1 && currentline < YDATA_END) {
 
             if (buf == NULL) {
                 if (currentline & 1) { // odd, next line is even
+//bufferEven = (uint8_t*)malloc(SAMPLES_PER_LINE);
                     memcpy(bufferEven, colourbarsEven, SAMPLES_PER_LINE);
 //                    memcpy(bufferEven, line6even, SAMPLES_PER_LINE);
                 }
                 else {
+//bufferOdd = (uint8_t*)malloc(SAMPLES_PER_LINE);
                     memcpy(bufferOdd, colourbarsOdd, SAMPLES_PER_LINE);
 //                    memcpy(bufferOdd, line6odd, SAMPLES_PER_LINE);
                 }
@@ -289,55 +294,53 @@ while (true) {
             else {
 
                 // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is / 2
-//                uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
+                uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
 
+                int16_t y = 50, u = 0, v = 0;
+                int16_t dmavfactor;
+                uint8_t *dmatargetbuffer;
 
+                uint8_t tbuf[SAMPLES_PER_LINE];
+                if (currentline & 1) {// this is multiplied by v to get even odd lines
+                    dmatargetbuffer = bufferEven+ioff;
+                    dmavfactor = 1;
+                //            memcpy(tbuf, line6even, SAMPLES_PER_LINE);
+                }
+                else {
+                    dmatargetbuffer = bufferOdd+ioff;
+                    dmavfactor = -1;
+                //            memcpy(tbuf, line6odd, SAMPLES_PER_LINE);
+                }
+                  
 
-int16_t dmay = 10, dmau = 0, dmav = 0;
-int16_t dmavfactor;
-uint8_t *dmatargetbuffer;
-
-uint8_t tbuf[SAMPLES_PER_LINE];
-if (currentline & 1) {// this is multiplied by v to get even odd lines
-    dmatargetbuffer = bufferEven+ioff;
-    dmavfactor = 1;
-//            memcpy(tbuf, line6even, SAMPLES_PER_LINE);
-}
-else {
-    dmatargetbuffer = bufferOdd+ioff;
-    dmavfactor = -1;
-//            memcpy(tbuf, line6odd, SAMPLES_PER_LINE);
-}
-  
-
-dmay=100;
 //                for (uint16_t i = ioff; i < ioff + irange; i += SAMPLES_PER_PIXEL) {
 //                for (uint16_t i = ioff; i < ioff + 2; i += SAMPLES_PER_PIXEL) {
-/*                    y = *idx >> 4;
+                    y = *idx >> 4;
                     u = (*idx >> 2) & 3;
                     v = *idx & 3;
                     // make y, u, v out of 127
                     y = y * 8;
                     u = u * 32;
-                    v = v * 32; */
+                    v = v * 32; 
 //dmay++;
 //                    for (uint16_t i2 = i; i2 < i + SAMPLES_PER_PIXEL; i2++) {
                     for (uint16_t dmai2 = 0; dmai2 < irange; dmai2++) {
-                        *(++dmatargetbuffer) =  levelBlank + (dmay * levelWhite + dmau * SIN2[dmai2] + dmavfactor * dmav * COS2[dmai2]) / 128 ;
-//                        tbuf[dmai2] =  levelBlank + (dmay * levelWhite + dmau * SIN2[dmai2] + dmavfactor * dmav * COS2[dmai2]) / 128 ;
+//                        *(++dmatargetbuffer) =  levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128 ;
+                        tbuf[dmai2] =  levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128 ;
                     }
 //                    idx++;
 //                }
 
-
-if (currentline & 1) {// this is multiplied by v to get even odd lines
-//            memcpy(bufferEven, tbuf, SAMPLES_PER_LINE);
-}
-else {
-//            memcpy(bufferOdd, tbuf, SAMPLES_PER_LINE);
-}
+                if (currentline & 1) {// this is multiplied by v to get even odd lines
+//                            memcpy(bufferEven, tbuf, SAMPLES_PER_LINE);
+                }
+                else {
+//                            memcpy(bufferOdd, tbuf, SAMPLES_PER_LINE);
+                }
 
             } // buf != null
+
+} // ydata lines
 
 
 dma_channel_wait_for_finish_blocking(dma_chan);
