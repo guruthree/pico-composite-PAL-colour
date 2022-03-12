@@ -137,9 +137,6 @@ class ColourPal {
 
             // initialise front buffer
             memset(screenbuffer_B, levelBlank, SAMPLES_COLOUR);
-
-            // display a test card by default
-//            this->setBuf(test_card_f);
         }
 
         void resetLines() {
@@ -271,6 +268,7 @@ class ColourPal {
             while (true) { // could set this to a bool running; so that we can stop?
                 int32_t dmavfactor = 0; // multiply v by +1 or -1 depending on even or odd line
 
+                dma_channel_set_trans_count(dma_channel_A, SAMPLES_SYNC_PORCHES / 4, false);
                 switch (currentline) {
                     case 1 ... 2:
                         dma_channel_set_read_addr(dma_channel_A, line1_A, true);
@@ -380,11 +378,6 @@ class ColourPal {
                     }
                 }
 
-                // only continue to the beginning of the loop and restart A after B is finished
-                dma_channel_wait_for_finish_blocking(dma_channel_A);
-                dma_channel_set_trans_count(dma_channel_A, SAMPLES_SYNC_PORCHES / 4, false);
-
-
                 gpio_put(18, led = !led); // this really should be flickering more? 
 
                 currentline++;
@@ -392,6 +385,8 @@ class ColourPal {
                     currentline = 1;
                 }
 
+                // only continue to the beginning of the loop after all the line contents have been sent
+                dma_channel_wait_for_finish_blocking(dma_channel_A);
             } // while (true)
         } // loop
 
