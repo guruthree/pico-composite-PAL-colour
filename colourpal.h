@@ -50,6 +50,8 @@ uint8_t __scratch_y("screenbuffer") screenbuffer_B[SAMPLES_COLOUR];
 //int32_t __attribute__((__aligned__(4))) SIN3[24];
 
 
+//int32_t __scratch_x("carrier") CARRIER[32];
+
 void cp_dma_handler();
 
 // note this does psuedo-progressive, which displays the same lines every field
@@ -272,10 +274,10 @@ class ColourPal {
             uint8_t backbuffer_B[SAMPLES_COLOUR];
             memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
 
-        int32_t __attribute__((__aligned__(4))) COS3[24];
-        int32_t __attribute__((__aligned__(4))) SIN3[24];
+//        int32_t __attribute__((__aligned__(4))) COS3[24];
+//        int32_t __attribute__((__aligned__(4))) SIN3[24];
 
-	for (uint32_t i = 0; i < 24; i++) {
+/*	for (uint32_t i = 0; i < 24; i++) {
             float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
             COS3[i] = levelWhite*cosf(x); 
             SIN3[i] = levelWhite*sinf(x); 
@@ -291,7 +293,16 @@ class ColourPal {
             else
             SIN3[i] = -levelWhite;
 //            SIN3[i] = -1;
-        }
+        }*/
+
+	// interleaved sine and cosine for sequential memory access
+        int32_t __attribute__((__aligned__(4))) CARRIER[32];
+	for (uint32_t i = 0; i < 32; i+=2) {
+            float x = float(i/2) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
+	    CARRIER[i] = levelWhite*sinf(x);
+	    CARRIER[i+1] = levelWhite*cosf(x);
+	}
+
 
 while (true) {
             int32_t dmavfactor;
@@ -397,6 +408,7 @@ while (true) {
                 else {
 
                     int32_t y = 50, u = 0, v = 0;
+			int32_t *CARRIERp;
 
                     // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is divided by 2
                     uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
@@ -410,17 +422,21 @@ while (true) {
 //                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*59); i += SAMPLES_PER_PIXEL-1) {
                         // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
                       // make y, u, v out of 127
-//                        y = ((*idx >> 1) & 0b01100000);
+////                        y = ((*idx >> 1) & 0b01100000);
                         y = ((*idx >> 1) & 0b01100000) + levelBlank;
-//                        y = levelWhite * ((*idx >> 1) & 0b01100000);
-//                      y = ((*idx << 6) & 0b11000000000000); // assuming levelWhite approx. equals 128
+////                        y = levelWhite * ((*idx >> 1) & 0b01100000);
+////                      y = ((*idx << 6) & 0b11000000000000); // assuming levelWhite approx. equals 128
                         u = (((*idx >> 3) & 7) - 3) << 5;
-//                        v = (((*(idx++) & 7) - 3) << 5);
+////                        v = (((*(idx++) & 7) - 3) << 5);
                         v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
 
-			int32_t *SIN3p = &SIN3[0];
+//y = line1_B[i];
+//u = line3_B[i];
+//v = line4_B[i];
+
+//			int32_t *SIN3p = &SIN3[0];
 //			int32_t *COS3p = &COS3[0];
-			int32_t *COS3p = &SIN3[9];
+//			int32_t *COS3p = &SIN3[9];
 
 
 /*                        backbuffer_B[i]    = levelBlank + (y + u * SIN3[0] + v * COS3[0]) / 128;
@@ -457,6 +473,10 @@ while (true) {
 *(bbP++) = levelBlank + (y + u * 124 + v * -48) / 128;
 *(bbP++) = levelBlank + (y + u * 94 + v * -94) / 128;*/
 
+
+			CARRIERp = &CARRIER[0];
+
+
                         for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) { // SAMPLES_PER_PIXEL
                             // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
 //                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * COS3[dmai2-i]) / 128;
@@ -471,7 +491,10 @@ while (true) {
 
 
 //                            backbuffer_B[dmai2] = levelBlank + ((y + u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
-                            backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
+//                            backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
+                            backbuffer_B[dmai2] = y + ((u * (*(CARRIERp++)) + v * (*(CARRIERp++))) >> 7) & 0xFF;
+
+//backbuffer_B[dmai2] = y + ((u * currentline + v * 7 * currentline) >> 7) & 0xFF;
 
 
 
