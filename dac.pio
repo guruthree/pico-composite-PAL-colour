@@ -9,15 +9,9 @@
 
 % c-sdk {
 
-// lookup table to get near-linear DAC output
-// the actual DAC range is 0-70 to represeont 0-1 V
-// extra values beyond the end of the range are there incase of integer badness
-#define DIVISIONS_PER_VOLT (70 / 1.02) // ADC scaling
-uint8_t ADC_TABLE[100] = { 0, 3, 6, 11, 14, 18, 21, 25, 28, 31, 32, 35, 39, 43, 46, 50, 53, 57, 61, 70, 74, 77, 81, 84, 88, 92, 95, 96, 100, 105, 108, 112, 115,119,123, 126, 139, 142, 146, 149, 154, 156, 159, 161, 164, 167, 171, 174, 178, 181, 185, 189, 198, 202, 205, 209, 212, 216, 220, 223 ,224, 227, 230, 234, 237, 241, 244, 248, 251, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255 };
-uint8_t levelConversion(uint8_t in) {
-    return ADC_TABLE[in];
-//    return in;
-}
+// it was supposed to max out at 1, scope seams to say 1.25, so 1.35 for some margin
+// luckily the TV doesn't seem to be susper sensitive to exact voltage
+#define DIVISIONS_PER_VOLT (255/1.35)
 
 #define PIN_COUNT 8
 static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base, float divider) {
