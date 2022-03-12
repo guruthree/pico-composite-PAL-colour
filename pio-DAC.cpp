@@ -26,9 +26,9 @@ void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
     dma_channel_set_trans_count(dma_chan32, size / 4, false);
     dma_channel_set_read_addr(dma_chan32, src, false);
     dma_channel_set_write_addr(dma_chan32, dst, true);
-//    dma_channel_wait_for_finish_blocking(dma_chan32);
+    dma_channel_wait_for_finish_blocking(dma_chan32);
     // if the write addr isn't NULL, it causes some sort of memory contention slowing down the rest of the loop
-//    dma_channel_set_write_addr(dma_chan32, NULL, false);
+    dma_channel_set_write_addr(dma_chan32, NULL, false);
 }
 
 #include "colourpal.h"

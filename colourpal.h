@@ -18,25 +18,32 @@ const uint16_t SAMPLES_FRONT_PORCH = 1.987 * DAC_FREQ / 1e6; // 132
 const uint16_t SAMPLES_UNTIL_BURST = 5.538 * DAC_FREQ / 1e6; // burst starts at this time, 368
 const uint16_t SAMPLES_BURST = 2.71 * DAC_FREQ / 1e6; // 180
 const uint16_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
-const uint16_t SAMPLES_SYNC_PORCHES = SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH; // 816
-const uint16_t SAMPLES_COLOUR = SAMPLES_PER_LINE - SAMPLES_SYNC_PORCHES; // 3440 points of the colour data to send
+
+// where we are copying data to in the scanline
+const uint16_t SAMPLES_OFF = (1.025*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts
+const uint16_t SAMPLES_PER_PIXEL = 20;
+const uint16_t SAMPLES_COLOUR = XRESOLUTION * SAMPLES_PER_PIXEL; // 3320 points of the colour data to send
+
+//const uint16_t SAMPLES_SYNC_PORCHES = SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH + SAMPLES_OFF + <whatever is leftover at the end of the colour data>; // 816
+const uint16_t SAMPLES_SYNC_PORCHES = SAMPLES_PER_LINE - SAMPLES_COLOUR; // 936
+const uint16_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_OFF; //    the samples at the end of signal right before front porch
+
 
 // convert to YUV for PAL encoding, RGB should be 0-127
 // no these are not the standard equations
 // part of that is integer maths, fine, but other wise...
 // no, I don't know why
 void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int16_t &y, int16_t &u, int16_t &v) {
-    y = 5 * r / 16 + 9 * g / 16 + b / 8;
+    y = 5 * r / 16 + 9 * g / 16 + b / 8; // luminance
     u = (r - y);
-    v = 7 * (b - y) / 8;
+    v = 13 * (b - y) / 16;
 }
 
-// the next line coming up
-// assign one to each buffer so one can be DMA read and the other written to
-uint8_t __scratch_x("bufferodd") bufferOdd_B[SAMPLES_COLOUR];
-uint8_t __scratch_y("buffereven") bufferEven_B[SAMPLES_COLOUR];
-//uint8_t bufferOdd_B[SAMPLES_COLOUR];
-//uint8_t bufferEven_B[SAMPLES_COLOUR];
+// the next lines coming up
+uint8_t __scratch_x("screenbuffer") screenbuffer_B[SAMPLES_COLOUR];
+//uint8_t __scratch_y("backbuffer") backbuffer_B[SAMPLES_COLOUR];
+//uint8_t screenbuffer_B[SAMPLES_COLOUR];
+//uint8_t backbuffer_B[SAMPLES_COLOUR];
 
 void cp_dma_handler();
 
@@ -85,15 +92,6 @@ class ColourPal {
         uint8_t* buf = NULL; // image data we are displaying
         uint16_t currentline = 1;
         bool led = false;
-
-        // where we are copying data to in the scanline
-//        uint16_t ioff = SAMPLES_HSYNC + SAMPLES_BACK_PORCH + (1.025*(DAC_FREQ / 1000000)); // 312 + 372 + 68 = 752
-//        uint16_t irange = SAMPLES_PER_LINE - SAMPLES_FRONT_PORCH-(1.025*(DAC_FREQ / 1000000)) - ioff; // 4256 - 132 - 68 - 752 = 3304
-        uint16_t ioff = (1.025*(DAC_FREQ / 1000000)); // 68
-//        uint16_t irange = SAMPLES_COLOUR - (1.025*(DAC_FREQ / 1000000)) - ioff; // 3440 - 68 - 752 = 3372
-//        uint16_t SAMPLES_PER_PIXEL = irange / XRESOLUTION; // 3372 / 166 = 20.3
-        uint16_t SAMPLES_PER_PIXEL = 20;
-        uint16_t irange = XRESOLUTION*SAMPLES_PER_PIXEL;
 
     public:
         ColourPal() {}
@@ -155,7 +153,6 @@ class ColourPal {
 
 
 
-
             // pre-calculate all the lines that don't change depending on what's being shown
             resetLines();
             // pre-calculate the colour carrier that the colour data is embeeded in
@@ -166,8 +163,8 @@ class ColourPal {
             createColourBars();
 
             // buffers by default show nothing
-            memset( bufferOdd_B, levelBlank, SAMPLES_COLOUR);
-            memset(bufferEven_B, levelBlank, SAMPLES_COLOUR);
+            memset(screenbuffer_B, levelBlank, SAMPLES_COLOUR);
+//            memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
 
             // display a test card by default
             this->setBuf(test_card_f);
@@ -187,26 +184,24 @@ class ColourPal {
             memset(line4_B, levelBlank, SAMPLES_COLOUR);
             memset(line6_B, levelBlank, SAMPLES_COLOUR); // this one is easy, nothing else needed
 
-            memset(line1_A + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_HSYNC + SAMPLES_BACK_PORCH);
-            memset(line4_A + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_SHORT_PULSE);
-            memset( line6odd_A + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_HSYNC);
-            memset(line6even_A + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_HSYNC);
+            memset(line1_A + SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_HSYNC + SAMPLES_BACK_PORCH);
+            memset(line4_A + SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_SHORT_PULSE);
+            memset( line6odd_A + SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_HSYNC);
+            memset(line6even_A + SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_HSYNC);
 
-            memset(line1_B + SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_GAP, levelBlank, SAMPLES_GAP); // 1st gap
-            memset(line1_B + SAMPLES_COLOUR - SAMPLES_GAP + SAMPLES_FRONT_PORCH, levelBlank, SAMPLES_GAP - SAMPLES_FRONT_PORCH); // 2nd gap
+            memset(line1_B + SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_GAP - SAMPLES_OFF, levelBlank, SAMPLES_GAP); // 1st gap
+            memset(line1_B + SAMPLES_COLOUR - SAMPLES_GAP + SAMPLES_FRONT_PORCH + SAMPLES_OFF, levelBlank, SAMPLES_GAP - SAMPLES_FRONT_PORCH - SAMPLES_OFF); // 2nd gap
 
-            memset(line3_B, levelSync, SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_GAP);
-            memset(line3_B + SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH, levelSync, SAMPLES_SHORT_PULSE);
+            memset(line3_B, levelSync, SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_GAP - SAMPLES_OFF);
+            memset(line3_B + SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_OFF, levelSync, SAMPLES_SHORT_PULSE);
 
-            memset(line4_B + SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH, levelSync, SAMPLES_SHORT_PULSE); // 2nd half of line 4 matches line 3
+            memset(line4_B + SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_OFF, levelSync, SAMPLES_SHORT_PULSE); // 2nd half of line 4 matches line 3
 
         }
 
         void calculateCarrier() {
             for (uint16_t i = 0; i < SAMPLES_COLOUR; i++) {
-                // the + here is a really fine adjustment on the carrier? it tunes colour bars fading at the top.
-                // the phase offset here is also odd
-                float x = float(i+2.2) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (-90.0 / 180.0) * M_PI;
+                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
                 COS2[i] = levelWhite*cosf(x); // odd lines
                 SIN2[i] = levelWhite*sinf(x); // even lines (sin vs cos gives the phase shift)
             }
@@ -214,13 +209,15 @@ class ColourPal {
 
         void populateBurst() {
             for (uint16_t i = 0; i < SAMPLES_BURST; i++) {
-                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
+                // the + here is a really fine adjustment on the carrier? it tunes colour bars fading at the top.
+                // the phase offset here is also odd
+                float x = float(i-6.5) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
                 burstOdd[i] = (levelColor*cosf(x) + levelBlank); // with out addition it would try and be negative
                 burstEven[i] = (levelColor*sinf(x) + levelBlank);
             }
 
-            memcpy( line6odd_A + SAMPLES_FRONT_PORCH + SAMPLES_UNTIL_BURST, burstOdd, SAMPLES_BURST);
-            memcpy(line6even_A + SAMPLES_FRONT_PORCH + SAMPLES_UNTIL_BURST, burstEven, SAMPLES_BURST);
+            memcpy( line6odd_A + SAMPLES_FRONT_PORCH + SAMPLES_UNTIL_BURST + SAMPLES_DEAD_SPACE, burstOdd, SAMPLES_BURST);
+            memcpy(line6even_A + SAMPLES_FRONT_PORCH + SAMPLES_UNTIL_BURST + SAMPLES_DEAD_SPACE, burstEven, SAMPLES_BURST);
         }
 
         void createColourBars() {
@@ -228,31 +225,31 @@ class ColourPal {
             memset( colourbarsOdd_B, levelBlank, SAMPLES_COLOUR);
             memset(colourbarsEven_B, levelBlank, SAMPLES_COLOUR);
 
-            for (uint16_t i = 0; i < irange; i++) {
+            for (uint16_t i = 0; i < SAMPLES_COLOUR; i++) {
 
                 int16_t y, u, v;
-                if (i < (irange / 8))
+                if (i < (SAMPLES_COLOUR / 8))
                     rgb2yuv(127, 127, 127, y, u, v);
-                else if (i < (2 * irange / 8))
+                else if (i < (2 * SAMPLES_COLOUR / 8))
                     rgb2yuv(96, 96, 0, y, u, v);
-                else if (i < (3 * irange / 8))
+                else if (i < (3 * SAMPLES_COLOUR / 8))
                     rgb2yuv(0, 96, 96, y, u, v);
-                else if (i < (4 * irange / 8))
+                else if (i < (4 * SAMPLES_COLOUR / 8))
                     rgb2yuv(0, 96, 0, y, u, v);
-                else if (i < (5 * irange / 8))
+                else if (i < (5 * SAMPLES_COLOUR / 8))
                     rgb2yuv(96, 0, 96, y, u, v);
-                else if (i < (6 * irange / 8))
+                else if (i < (6 * SAMPLES_COLOUR / 8))
                     rgb2yuv(96, 0, 0, y, u, v);
-                else if (i < (7 * irange / 8))
+                else if (i < (7 * SAMPLES_COLOUR / 8))
                     rgb2yuv(0, 0, 96, y, u, v);
                 else
                     rgb2yuv(0, 0, 0, y, u, v);
 
                 // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
                 // +- cos is flipped...
-                colourbarsOdd_B[i+ioff]  = levelBlank + (y * levelWhite + u * SIN2[i] - v * COS2[i]) / 128;
+                colourbarsOdd_B[i]  = levelBlank + (y * levelWhite + u * SIN2[i] - v * COS2[i]) / 128;
                 // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
-                colourbarsEven_B[i+ioff] = levelBlank + (y * levelWhite + u * SIN2[i] + v * COS2[i]) / 128;
+                colourbarsEven_B[i] = levelBlank + (y * levelWhite + u * SIN2[i] + v * COS2[i]) / 128;
             }
         }
 
@@ -264,73 +261,96 @@ class ColourPal {
 
 
         void __time_critical_func(dmaHandler)() {
+uint8_t backbuffer_B[SAMPLES_COLOUR];
+            memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
+//int16_t *dmavfactorp;
 
-uint16_t scroll = 8;
 while (true) {
+                    int16_t dmavfactor;
             switch (currentline) {
                 case 1 ... 2:
                     dma_channel_set_read_addr(dma_channel_A, line1_A, true);
-dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                    dma_channel_wait_for_finish_blocking(dma_channel_A);
+                    dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                    dma_channel_set_read_addr(dma_channel_B, line1_B, false);
                     dma_channel_set_read_addr(dma_channel_A, line1_B, true);
                     break;
                 case 3:
                     dma_channel_set_read_addr(dma_channel_A, line1_A, true); // lines 1 and 3 start the same way
-dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                    dma_channel_wait_for_finish_blocking(dma_channel_A);
+                    dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                    dma_channel_set_read_addr(dma_channel_B, line3_B, false);
                     dma_channel_set_read_addr(dma_channel_A, line3_B, true);
                     break;
                 case 4 ... 5:
                     dma_channel_set_read_addr(dma_channel_A, line4_A, true);
-dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                    dma_channel_wait_for_finish_blocking(dma_channel_A);
+                    dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                    dma_channel_set_read_addr(dma_channel_B, line4_B, false);
                     dma_channel_set_read_addr(dma_channel_A, line4_B, true);
                     break;
                 case 6 ... YDATA_START-1:
                     if (currentline & 1) { // odd
                         dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
-dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                        dma_channel_wait_for_finish_blocking(dma_channel_A);
+                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
-                    dma_channel_set_read_addr(dma_channel_A, line6_B, true);
+                        dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                     }
                     else {
                         dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
-dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                        dma_channel_wait_for_finish_blocking(dma_channel_A);
+                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
-                    dma_channel_set_read_addr(dma_channel_A, line6_B, true);
+                        dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                     }
                     break;
                 case YDATA_START ... YDATA_END: // in the absence of anything else, empty lines
                     if (currentline & 1) { // odd
                         dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
-dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                        dma_channel_wait_for_finish_blocking(dma_channel_A);
+//                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                        dma_channel_set_read_addr(dma_channel_B, bufferOdd_B, false);
-                    dma_channel_set_read_addr(dma_channel_A, bufferOdd_B, true);
+//                        dma_channel_set_read_addr(dma_channel_A, bufferOdd_B, true);
+                        dmavfactor = 1;
+//dmavfactorp = COS2;
                     }
                     else {
                         dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
-dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                        dma_channel_wait_for_finish_blocking(dma_channel_A);
+//                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                        dma_channel_set_read_addr(dma_channel_B, bufferEven_B, false);
-                    dma_channel_set_read_addr(dma_channel_A, bufferEven_B, true);
+//                        dma_channel_set_read_addr(dma_channel_A, bufferEven_B, true);
+                        dmavfactor = -1;
+//dmavfactorp = COS2;
                     }
+
+                    dmacpy(screenbuffer_B, backbuffer_B, SAMPLES_COLOUR);
+                    dma_channel_wait_for_finish_blocking(dma_channel_A);
+                    dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                    dma_channel_set_read_addr(dma_channel_A, screenbuffer_B, true);
+
                     break;
                 case YDATA_END+1 ...309:
                     if (currentline & 1) { // odd
                         dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
-dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                        dma_channel_wait_for_finish_blocking(dma_channel_A);
+                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
-                    dma_channel_set_read_addr(dma_channel_A, line6_B, true);
+                        dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                     }
                     else {
                         dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
-dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                        dma_channel_wait_for_finish_blocking(dma_channel_A);
+                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
-                    dma_channel_set_read_addr(dma_channel_A, line6_B, true);
+                        dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                     }
                     break;
                 case 310 ... 312:
                     dma_channel_set_read_addr(dma_channel_A, line4_A, true);
-dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                    dma_channel_wait_for_finish_blocking(dma_channel_A);
+                    dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                    dma_channel_set_read_addr(dma_channel_B, line4_B, false);
                     dma_channel_set_read_addr(dma_channel_A, line4_B, true);
                     break;
@@ -338,60 +358,56 @@ dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count
                     break;
             }
 
-    if (currentline >= YDATA_START - 1 && currentline < YDATA_END) {
+            if (currentline >= YDATA_START - 1 && currentline < YDATA_END) {
 
                 if (buf == NULL) {
                     if (currentline & 1) { // odd, next line is even
-                        memcpy(bufferEven_B, colourbarsEven_B, SAMPLES_COLOUR);
+                        dmacpy(backbuffer_B, colourbarsEven_B, SAMPLES_COLOUR);
                     }
                     else {
-                        memcpy(bufferOdd_B, colourbarsOdd_B, SAMPLES_COLOUR);
+                        dmacpy(backbuffer_B, colourbarsOdd_B, SAMPLES_COLOUR);
                     }
                 }
                 else {
 
-                    uint8_t y = 0, u = 0, v = 0;
-                    int16_t dmavfactor;
-                    uint8_t *dmatargetbuffer;
+                    int8_t y = 0, u = 0, v = 0;
 
                     uint8_t tbuf[SAMPLES_COLOUR];
-                    if (currentline & 1) {// this is multiplied by v to get even odd lines
-                        dmatargetbuffer = bufferEven_B+ioff;
+//                    memset(backbuffer_B, levelBlank, SAMPLES_COLOUR);
+/*                    if (currentline & 1) {// this is multiplied by v to get even odd lines
                         dmavfactor = 1;
                     }
                     else {
-                        dmatargetbuffer = bufferOdd_B+ioff;
                         dmavfactor = -1;
-                    }
+                    }*/
                       
                     // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is / 2
                     uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
-                    idx = idx + scroll; // shuffle over for a more interesting image for now...
 
 
-//                    for (uint16_t i = 0; i < irange; i += SAMPLES_PER_PIXEL) { // irange
-//                    for (uint16_t i = 0; i < (SAMPLES_PER_PIXEL*14); i += SAMPLES_PER_PIXEL) {
-                    for (uint16_t i = SAMPLES_PER_PIXEL*scroll; i < (SAMPLES_PER_PIXEL*(14+scroll)); i += SAMPLES_PER_PIXEL) {
-                        y = (*idx >> 1) & 0b01111000; // y * 8
-                        u = (*idx << 3) & 0b01100000; // u * 32
-                        v = (*(idx++) << 5) & 0b01100000; // u * 32
-                        // make y, u, v out of 127... these may be negative, so this could be an issue
-//                        y = y * 8;
-//                        u = u * 32;
-//                        v = v * 32; 
+//                    for (uint16_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
+                    for (uint16_t i = 0; i < (SAMPLES_PER_PIXEL*17); i += SAMPLES_PER_PIXEL) {
+//                        y = (*idx >> 1) & 0b01111000; // y * 8
+//                        u = (*idx << 3) & 0b01100000; // u * 32
+//                        v = (*(idx++) << 5) & 0b01100000; // u * 32
+
+                        // make y, u, v out of 127... these may be negative? could be an issue
+
+// 2 bits y, 1 bit sign, 2bits u, 1 bit sign, 2 bits v
+                    y = *idx >> 6;
+                    u = ((*idx >> 3) & 7) - 3;
+                    v = (*(idx++) & 7) - 3;
+                    // make y, u, v out of 127
+                    y = y * 32;
+                    u = u * 32;
+                    v = v * 32; 
 
                         for (uint16_t dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL; dmai2++) { // SAMPLES_PER_PIXEL
-                            // ioff added to the buffer earlier
-                            dmatargetbuffer[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128 ;
+                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128 ;
+//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + v * dmavfactorp[dmai2]) / 128 ;
                         }
                     }
 
-/*                    if (currentline & 1) {// this is multiplied by v to get even odd lines
-                        memcpy(bufferEven_B, tbuf, SAMPLES_COLOUR);
-                    }
-                    else {
-                        memcpy(bufferOdd_B, tbuf, SAMPLES_COLOUR);
-                    }*/
 
                 } // buf != null
 
@@ -399,7 +415,8 @@ dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count
 
 
             // only continue to the beginning of the loop and restart A after B is finished
-            dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_SYNC_PORCHES / 4, false);
+            dma_channel_wait_for_finish_blocking(dma_channel_A);
+            dma_channel_set_trans_count(dma_channel_A, SAMPLES_SYNC_PORCHES / 4, false);
 //            dma_channel_wait_for_finish_blocking(dma_channel_B);
 
 
@@ -408,9 +425,6 @@ dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count
             currentline++;
             if (currentline == 313) {
                 currentline = 1;
-//scroll++;
-//if (scroll == XRESOLUTION-14)
-//scroll =0;
             }
 
 } // while (true)
@@ -426,7 +440,7 @@ dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count
 //dma_channel_wait_for_finish_blocking(dma_channel_A);
 //            dma_channel_set_read_addr(dma_channel_A, line1_B, true);
 //            dma_channel_set_read_addr(dma_channel_B, line1_B, false); // this will be started by the chain from A
-            currentline++; // onto line 2!
+//            currentline++; // onto line 2!
 //dma_channel_wait_for_finish_blocking(dma_channel_A);
 dmaHandler();
         }
