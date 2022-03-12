@@ -1,20 +1,11 @@
-trying to get a solid screen of color
-play around with different frequencies?
-    200 system clock with divider of 15?
+sampling issue?
+
+DAC is actually square a little flat
+maybe plotting like this could reveal some issue?
 
 
-uneven clock divider?
+is the tiny2040 using the external oscillator by default?
+https://raspberrypi.github.io/pico-sdk-doxygen/group__hardware__xosc.html
 
-
-40/3 to get 13 mhz?
-
-
-octave:19> 4433618.75 * (47 + 94/256)
-ans =  210008050.63477
-
-octave:36> 4433618.75 * 4 * (11 + 71/256)
-ans =  199997770.80078
-
-octave:45> 4433618.75 * 4 * (11 + 216/256)
-ans =  210042688.28125
-
+smoothing cap?
+run extra slow to check on picoscope?

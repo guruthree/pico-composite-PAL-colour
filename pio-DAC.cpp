@@ -73,7 +73,7 @@ int main() {
     uint8_t levelWhite = ADC_TABLE[uint8_t((whiteVolts - syncVolts) * divpervolt + 0.5)];
     float colourCarrier = 4433618.75; // the exact
     // works better with 266/30 or 133/15
-//    float colourCarrier = 4.4333e6; // 266 MHz & a divider of 15
+//    float colourCarrier = 4.433e6; // 266 MHz & a divider of 15
 //    float colourCarrier = 4.4336e6; // 200 MHz & a divider of 11 + 136/256
     float levelBlankU = (blankVolts - syncVolts) * divpervolt + 0.5;
     float levelWhiteU = (whiteVolts - syncVolts) * divpervolt + 0.5;
@@ -140,8 +140,8 @@ int main() {
 
     uint32_t samplesGap = 4.7 * DACfreq / 1000000;
     uint32_t samplesShortPulse = 2.35 * DACfreq / 1000000;
-    uint32_t samplesHsync = 4.8 * DACfreq / 1000000;
-    uint32_t samplesBackPorch = 5.8 * DACfreq / 1000000;
+    uint32_t samplesHsync = 4.7 * DACfreq / 1000000;
+    uint32_t samplesBackPorch = 5.7 * DACfreq / 1000000;
     uint32_t samplesFrontPorch = 2 * DACfreq / 1000000;
     uint32_t samplesUntilBurst = 5 * DACfreq / 1000000; // burst starts at this time
     uint32_t samplesBurst = 2.7 * DACfreq / 1000000;
@@ -220,7 +220,7 @@ int main() {
 //        aline[i] = levelBlank+i/8;
 //    }
     for (i = samplesHsync+samplesBackPorch; i < samplesLine-samplesFrontPorch; i++) {
-        aline[i] = levelWhite;
+//        aline[i] = levelWhite;
     }
 
     // effective 'resolution' 999x260, but vertical distinction, it's more like 333x250
@@ -250,13 +250,14 @@ int main() {
     float y = 0.299 * r + 0.587 * g + 0.114 * b; 
     float u = 0.493 * (b - y);
     float v = 0.877 * (r - y);
-    uint32_t at = 0;
-    for (i = samplesHsync+samplesBackPorch+5; i < samplesLine-samplesFrontPorch; i++) {
+    for (i = samplesHsync+samplesBackPorch+(0.75*(DACfreq / 1000000)); i < samplesLine-samplesFrontPorch-(0.75*(DACfreq / 1000000)); i++) {
         // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
-        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[at] + v * COS[at]));
+        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] + v * COS[i]));
         // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
-        alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[at] - v * COS[at]));
-        at++;
+        alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
+
+//        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU*0.5);
+//        alineEven[i] = levelConversion(levelBlankU + levelWhiteU*0.5);
     }
 
 
