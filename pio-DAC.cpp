@@ -59,7 +59,8 @@ int main() {
 
     cp.init();
     cp.start();
-    while (1) { tight_loop_contents(); } // need this for USB!
+
+//    while (1) { tight_loop_contents(); } // need this for USB!
 
 //    core1_entry();
 }
