@@ -29,8 +29,8 @@ int main() {
 //    stdio_init_all();
 //    set_sys_clock_khz(160000, true); // 160 MHz
 //    set_sys_clock_khz(284000, true); // top speed: 284 MHz (282?)
-//    set_sys_clock_khz(266000, true);
-    set_sys_clock_khz(142000, true); // best multiple to sub-fraction signal?
+    set_sys_clock_khz(280000, true);
+//    set_sys_clock_khz(142000, true); // best multiple to sub-fraction signal?
 //    set_sys_clock_khz(133000, true);
 
     xosc_init(); // hardware oscillator for more stable clocks?
@@ -165,6 +165,14 @@ int main() {
         float x = i/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
         COS[i] = cos(x); // odd lines
         SIN[i] = sin(x); // even lines
+        if (COS[i] > 0) // square wave approximation
+            COS[i] = 1;
+        else
+            COS[i] = -1;
+        if (SIN[i] > 0)
+            SIN[i] = 1;
+        else
+            SIN[i] = -1;
     }
 
     uint8_t burstOdd[samplesBurst]; // for odd lines
