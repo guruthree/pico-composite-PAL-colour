@@ -18,10 +18,10 @@ const uint16_t SAMPLES_BURST = 2.7 * DAC_FREQ / 1e6; // we may want this to be d
 const uint16_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2;
 
 // why are g and r flipped? who knows...
-void rgb2yuv(float b, float g, float r, float &y, float &u, float &v) {
+void rgb2yuv(float r, float g, float b, float &y, float &u, float &v) {
     y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
-    u = 0.493 * (b - y);
-    v = 0.877 * (r - y);
+    u = 2 * 0.493 * (r - y);
+    v = 0.877 * (b - y);
 }
 
 void cp_dma_handler();
