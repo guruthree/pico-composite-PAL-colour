@@ -31,7 +31,7 @@ int main() {
 //    set_sys_clock_khz(284000, true); // top speed: 284 MHz (282?)
     set_sys_clock_khz(280000, true);
 //    set_sys_clock_khz(142000, true); // best multiple to sub-fraction signal?
-//    set_sys_clock_khz(133000, true);
+//    set_sys_clock_khz(266000, true);
 
     xosc_init(); // hardware oscillator for more stable clocks?
 
@@ -66,7 +66,7 @@ int main() {
     uint8_t levelBlank = levelConversion(uint8_t((blankVolts - syncVolts) * divpervolt + 0.5));
     uint8_t levelBlack = levelConversion(uint8_t((blackVolts - syncVolts) * divpervolt + 0.5));
     uint8_t levelWhite = levelConversion(uint8_t((whiteVolts - syncVolts) * divpervolt + 0.5));
-    float colourCarrier = 4433618.75; // the exact
+    float colourCarrier = 4433618.75*1.1690; // the exact
     // works better with 266/30 or 133/15
 //    float colourCarrier = (368/83)*1e6;
 //    float colourCarrier = (266/60)*1e6; // 266 MHz & a divider of 15
