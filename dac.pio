@@ -20,7 +20,7 @@ uint8_t levelConversion(uint8_t in) {
 }
 
 #define PIN_COUNT 8
-static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base, uint8_t divider) {
+static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base, float divider) {
     for(uint i=pin_base; i<pin_base+PIN_COUNT; i++) {
         pio_gpio_init(pio, i);
     }
@@ -29,19 +29,20 @@ static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base
     pio_sm_config c = dac_program_get_default_config(offset); // get a default config, this function call is auto-generated
 
     // change # of bits here if we want to write a 32-bit word and then go through it
-    sm_config_set_out_shift(&c, true, true, 8); // true - shift right, auto pull, # of bits
+    sm_config_set_out_shift(&c, true, true, 32); // true - shift right, auto pull, # of bits
 
     sm_config_set_out_pins(&c, pin_base, PIN_COUNT);
 
     sm_config_set_clkdiv(&c, divider);
+//    sm_config_set_clkdiv_int_frac(&c, divider, 1);
 
     // join the FIFO buffers to get more DMA throughput?
     // we use the transmit only so join RX to the TX?
-//    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
 
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
-//    pio_sm_clear_fifos(pio, sm);
+    pio_sm_clear_fifos(pio, sm);
 }
 
 %}

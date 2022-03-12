@@ -13,12 +13,12 @@ const uint16_t SAMPLES_SHORT_PULSE = 2.35 * DAC_FREQ / 1e6;
 const uint16_t SAMPLES_HSYNC = 4.7 * DAC_FREQ / 1e6;
 const uint16_t SAMPLES_BACK_PORCH = 5.6 * DAC_FREQ / 1e6;
 const uint16_t SAMPLES_FRONT_PORCH = 2 * DAC_FREQ / 1e6;
-const uint16_t SAMPLES_UNTIL_BURST = 5.6 * DAC_FREQ / 1e6; // burst starts at this time
-const uint16_t SAMPLES_BURST = 2.8 * DAC_FREQ / 1e6; // we may want this to be divisble by 4 at some point?
+const uint16_t SAMPLES_UNTIL_BURST = 5.55 * DAC_FREQ / 1e6; // burst starts at this time
+const uint16_t SAMPLES_BURST = 2.7 * DAC_FREQ / 1e6; // we may want this to be divisble by 4 at some point?
 const uint16_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2;
 
 // why are g and r flipped? who knows...
-void rgb2yuv(float g, float r, float b, float &y, float &u, float &v) {
+void rgb2yuv(float b, float g, float r, float &y, float &u, float &v) {
     y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
     u = 0.493 * (b - y);
     v = 0.877 * (r - y);
@@ -56,6 +56,8 @@ class ColourPal {
 //        const float COLOUR_CARRIER = 4e6;
         float COS[SAMPLES_PER_LINE];
         float SIN[SAMPLES_PER_LINE];
+        float COS2[SAMPLES_PER_LINE];
+        float SIN2[SAMPLES_PER_LINE];
         // the colour burst
         uint8_t burstOdd[SAMPLES_BURST]; // for odd lines
         uint8_t burstEven[SAMPLES_BURST]; // for even lines
@@ -87,7 +89,7 @@ class ColourPal {
             dma_chan = dma_claim_unused_channel(true);
             dma_channel_config channel_config = dma_channel_get_default_config(dma_chan);
 
-            channel_config_set_transfer_data_size(&channel_config, DMA_SIZE_8); // transfer 8 bits at a time
+            channel_config_set_transfer_data_size(&channel_config, DMA_SIZE_32); // transfer 8 bits at a time
             channel_config_set_read_increment(&channel_config, true); // go down the buffer as it's read
             channel_config_set_write_increment(&channel_config, false); // always write the data to the same place
             channel_config_set_dreq(&channel_config, pio_get_dreq(pio, pio_sm, true));
@@ -96,13 +98,13 @@ class ColourPal {
                                   &channel_config,
                                   &pio->txf[pio_sm], // write address
                                   NULL, // read address
-                                  SAMPLES_PER_LINE, // / 4, // number of data transfers to ( / 4 because 32-bit copies are faster)
+                                  SAMPLES_PER_LINE / 4, // number of data transfers to ( / 4 because 32-bit copies are faster)
                                   false // start immediately
             );
 
-//            dma_channel_set_irq0_enabled(dma_chan, true);
-//            irq_set_exclusive_handler(DMA_IRQ_0, cp_dma_handler);
-//            irq_set_enabled(DMA_IRQ_0, true);
+            dma_channel_set_irq0_enabled(dma_chan, true);
+            irq_set_exclusive_handler(DMA_IRQ_0, cp_dma_handler);
+            irq_set_enabled(DMA_IRQ_0, true);
 
             // pre-calculate all the lines that don't change depending on what's being shown
             resetLines();
@@ -154,9 +156,13 @@ class ColourPal {
 
         void calculateCarrier() {
             for (uint16_t i = 0; i < SAMPLES_PER_LINE; i++) {
-                double x = double(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
+                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
                 COS[i] = cosf(x); // odd lines
                 SIN[i] = sinf(x); // even lines (sin vs cos gives the phase shift)
+
+                x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + ((130.0 + 135.0) / 180.0) * M_PI;
+                COS2[i] = cosf(x); // odd lines
+                SIN2[i] = sinf(x); // even lines (sin vs cos gives the phase shift)
             }
         }
 
@@ -176,7 +182,7 @@ class ColourPal {
         void createColourBars() {
 
             uint16_t ioff = SAMPLES_HSYNC + SAMPLES_BACK_PORCH + (1*(DAC_FREQ / 1000000));
-            uint16_t ioff2 = ioff - 5;
+            uint16_t ioff2 = ioff;// - 6; // corrects for slight fade at top of picture
             uint16_t irange = SAMPLES_PER_LINE - SAMPLES_FRONT_PORCH-(1*(DAC_FREQ / 1000000)) - ioff;
             for (uint16_t i = ioff; i < ioff + irange; i++) {
 
@@ -199,9 +205,9 @@ class ColourPal {
                     rgb2yuv(0, 0, 0, y, u, v);
 
                 // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
-                colourbarsOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i-ioff2] + v * COS[i-ioff2]));
+                colourbarsOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN2[i-ioff2] - v * COS2[i-ioff2]));
                 // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
-                colourbarsEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i-ioff2] - v * COS[i-ioff2]));
+                colourbarsEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN2[i-ioff2] + v * COS2[i-ioff2]));
             }
         }
 
@@ -211,7 +217,7 @@ class ColourPal {
 
         void dmaHandler() {
 
-while (true) {
+//while (true) {
             switch (currentline) {
                 case 1 ... 2:
                     dma_channel_set_read_addr(dma_chan, line1, true);
@@ -257,13 +263,14 @@ while (true) {
                     break;
             }
 
-dma_channel_wait_for_finish_blocking(dma_chan);
+//dma_channel_wait_for_finish_blocking(dma_chan);
             gpio_put(18, led = !led); // not flashing as it should be? without this here for a tiny delay it doesn't work!?
+
             currentline++;
             if (currentline == 313) {
                 currentline = 1;
             }
-}
+//} // while (true)
             // prepare data for next line? raise semaphore for it?
             dma_hw->ints0 = 1u << dma_chan;
         }
@@ -271,7 +278,7 @@ dma_channel_wait_for_finish_blocking(dma_chan);
         void start() {
             dma_channel_set_read_addr(dma_chan, line1, true); // everything is set, start!
             currentline++; // onto line 2!
-dmaHandler();
+//dmaHandler();
         }
 
 };
