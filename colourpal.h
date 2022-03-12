@@ -18,7 +18,7 @@ const uint16_t SAMPLES_FRONT_PORCH = 1.987 * DAC_FREQ / 1e6; // 132
 const uint16_t SAMPLES_UNTIL_BURST = 5.538 * DAC_FREQ / 1e6; // burst starts at this time, 368
 const uint16_t SAMPLES_BURST = 2.71 * DAC_FREQ / 1e6; // 180
 const uint16_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
-const uint16_t SAMPLES_SYNC_PORCHES =  SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH; // 816
+const uint16_t SAMPLES_SYNC_PORCHES = SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH; // 816
 const uint16_t SAMPLES_COLOUR = SAMPLES_PER_LINE - SAMPLES_SYNC_PORCHES; // 3440 points of the colour data to send
 
 // convert to YUV for PAL encoding, RGB should be 0-127
@@ -55,7 +55,7 @@ class ColourPal {
         PIO pio;
         int pio_sm = 0;
         int pio_offset;
-        uint8_t dma_channel_A, dma_channel_B;
+        uint8_t dma_channel_A;//, dma_channel_B;
 
         // these lines are the same every frame
         uint8_t line1_A[SAMPLES_SYNC_PORCHES];
@@ -126,7 +126,7 @@ class ColourPal {
             );
 
             // DMA channel for colour data
-            dma_channel_B = dma_claim_unused_channel(true);
+/*            dma_channel_B = dma_claim_unused_channel(true);
             dma_channel_config channel_configB = dma_channel_get_default_config(dma_channel_B);
 
             channel_config_set_transfer_data_size(&channel_configB, DMA_SIZE_32); // transfer 8 bits at a time
@@ -144,7 +144,7 @@ class ColourPal {
 
             // when channel A has finished sendying the sync + porches, start channel B to send the data
             channel_config_set_chain_to(&channel_configA, dma_channel_B);
-            channel_config_set_chain_to(&channel_configB, dma_channel_A);
+            channel_config_set_chain_to(&channel_configB, dma_channel_A); */
 
 //            dma_channel_set_irq0_enabled(dma_channel_B, true);
 //            irq_set_exclusive_handler(DMA_IRQ_0, cp_dma_handler);
@@ -250,6 +250,9 @@ class ColourPal {
 
         void createColourBars() {
 
+            memset( colourbarsOdd_B, levelBlank, SAMPLES_COLOUR);
+            memset(colourbarsEven_B, levelBlank, SAMPLES_COLOUR);
+
             for (uint16_t i = 0; i < irange; i++) {
 
                 int16_t y, u, v;
@@ -287,53 +290,73 @@ class ColourPal {
 
         void dmaHandler() {
 
-//while (true) {
+while (true) {
             switch (currentline) {
                 case 1 ... 2:
                     dma_channel_set_read_addr(dma_channel_A, line1_A, true);
-                    dma_channel_set_read_addr(dma_channel_B, line1_B, false);
+dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                    dma_channel_set_read_addr(dma_channel_B, line1_B, false);
+                    dma_channel_set_read_addr(dma_channel_A, line1_B, true);
                     break;
                 case 3:
                     dma_channel_set_read_addr(dma_channel_A, line1_A, true); // lines 1 and 3 start the same way
-                    dma_channel_set_read_addr(dma_channel_B, line3_B, false);
+dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                    dma_channel_set_read_addr(dma_channel_B, line3_B, false);
+                    dma_channel_set_read_addr(dma_channel_A, line3_B, true);
                     break;
                 case 4 ... 5:
                     dma_channel_set_read_addr(dma_channel_A, line4_A, true);
-                    dma_channel_set_read_addr(dma_channel_B, line4_B, false);
+dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                    dma_channel_set_read_addr(dma_channel_B, line4_B, false);
+                    dma_channel_set_read_addr(dma_channel_A, line4_B, true);
                     break;
                 case 6 ... YDATA_START-1:
                     if (currentline & 1) { // odd
                         dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
-                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
+dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
+                    dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                     }
                     else {
                         dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
-                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
+dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
+                    dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                     }
                     break;
                 case YDATA_START ... YDATA_END: // in the absence of anything else, empty lines
                     if (currentline & 1) { // odd
                         dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
-                        dma_channel_set_read_addr(dma_channel_B, bufferOdd_B, false);
+dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                        dma_channel_set_read_addr(dma_channel_B, bufferOdd_B, false);
+                    dma_channel_set_read_addr(dma_channel_A, bufferOdd_B, true);
                     }
                     else {
                         dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
-                        dma_channel_set_read_addr(dma_channel_B, bufferEven_B, false);
+dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                        dma_channel_set_read_addr(dma_channel_B, bufferEven_B, false);
+                    dma_channel_set_read_addr(dma_channel_A, bufferEven_B, true);
                     }
                     break;
                 case YDATA_END+1 ...309:
                     if (currentline & 1) { // odd
                         dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
-                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
+dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
+                    dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                     }
                     else {
                         dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
-                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
+dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
+                    dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                     }
                     break;
                 case 310 ... 312:
                     dma_channel_set_read_addr(dma_channel_A, line4_A, true);
-                    dma_channel_set_read_addr(dma_channel_B, line4_B, false);
+dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+//                    dma_channel_set_read_addr(dma_channel_B, line4_B, false);
+                    dma_channel_set_read_addr(dma_channel_A, line4_B, true);
                     break;
                 default:
                     break;
@@ -400,8 +423,8 @@ if (currentline >= YDATA_START - 1 && currentline < YDATA_END) {
 
 
             // only continue to the beginning of the loop and restart A after B is finished
-//            dma_channel_wait_for_finish_blocking(dma_channel_A);
-            dma_channel_wait_for_finish_blocking(dma_channel_B);
+            dma_channel_wait_for_finish_blocking(dma_channel_A); dma_channel_set_trans_count(dma_channel_A, SAMPLES_SYNC_PORCHES / 4, false);
+//            dma_channel_wait_for_finish_blocking(dma_channel_B);
 //sleep_us(100);
 
             gpio_put(18, led = !led); // not flashing as it should be?
@@ -410,7 +433,7 @@ if (currentline >= YDATA_START - 1 && currentline < YDATA_END) {
             if (currentline == 313) {
                 currentline = 1;
             }
-//} // while (true)
+} // while (true)
 
 
             // prepare data for next line? raise semaphore for it?
@@ -419,9 +442,12 @@ if (currentline >= YDATA_START - 1 && currentline < YDATA_END) {
         }
 
         void start() {
-            dma_channel_set_read_addr(dma_channel_A, line1_A, true); // everything is set, start!
-            dma_channel_set_read_addr(dma_channel_B, line1_B, false); // this will be started by the chain from A
+//            dma_channel_set_read_addr(dma_channel_A, line1_A, true); // everything is set, start!
+//dma_channel_wait_for_finish_blocking(dma_channel_A);
+//            dma_channel_set_read_addr(dma_channel_A, line1_B, true);
+//            dma_channel_set_read_addr(dma_channel_B, line1_B, false); // this will be started by the chain from A
             currentline++; // onto line 2!
+//dma_channel_wait_for_finish_blocking(dma_channel_A);
 dmaHandler();
         }
 
