@@ -9,15 +9,15 @@
 // timings - these are here as consts because the division needs to process
 // a horizontal line is 64 microseconds
 // this HAS to be divisible by 4 to use 32-bit DMA transfers
-const uint16_t SAMPLES_PER_LINE = 64 * DAC_FREQ / 1e6;
-const uint16_t SAMPLES_GAP = 4.7 * DAC_FREQ / 1e6;
-const uint16_t SAMPLES_SHORT_PULSE = 2.35 * DAC_FREQ / 1e6;
-const uint16_t SAMPLES_HSYNC = 4.7 * DAC_FREQ / 1e6;
-const uint16_t SAMPLES_BACK_PORCH = 5.6 * DAC_FREQ / 1e6;
-const uint16_t SAMPLES_FRONT_PORCH = 2 * DAC_FREQ / 1e6;
-const uint16_t SAMPLES_UNTIL_BURST = 5.55 * DAC_FREQ / 1e6; // burst starts at this time
-const uint16_t SAMPLES_BURST = 2.7 * DAC_FREQ / 1e6; // we may want this to be divisble by 4 at some point?
-const uint16_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2;
+const uint16_t SAMPLES_PER_LINE = 64 * DAC_FREQ / 1e6; // 4256
+const uint16_t SAMPLES_GAP = 4.692 * DAC_FREQ / 1e6; // 312
+const uint16_t SAMPLES_SHORT_PULSE = 2.347 * DAC_FREQ / 1e6; // 156
+const uint16_t SAMPLES_HSYNC = 4.693 * DAC_FREQ / 1e6; // 312
+const uint16_t SAMPLES_BACK_PORCH = 5.599 * DAC_FREQ / 1e6; // 372
+const uint16_t SAMPLES_FRONT_PORCH = 1.987 * DAC_FREQ / 1e6; // 132
+const uint16_t SAMPLES_UNTIL_BURST = 5.538 * DAC_FREQ / 1e6; // burst starts at this time, 368
+const uint16_t SAMPLES_BURST = 2.71 * DAC_FREQ / 1e6; // 180
+const uint16_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
 
 // convert to YUV for PAL encoding, RGB should be 0-127
 // no these are not the standard equations
@@ -27,10 +27,19 @@ void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int16_t &y, int16_t &u, int16_t &v
 //    y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
 //    u = 2 * 0.493 * (r - y);
 //    v = 0.877 * (b - y);
+
     y = 5 * r / 16 + 9 * g / 16 + b / 8;
     u = (r - y);
     v = 7 * (b - y) / 8;
+
+//    y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
+//    u = 0.493 * (b - y);
+//    v = 0.877 * (r - y);
 }
+
+//uint8_t __scratch_y("bufferodd") bufferOdd[SAMPLES_PER_LINE];
+uint8_t bufferOdd[SAMPLES_PER_LINE];
+uint8_t bufferEven[SAMPLES_PER_LINE];
 
 void cp_dma_handler();
 
@@ -80,8 +89,8 @@ class ColourPal {
         bool led = false;
 
         // where we are copying data to in the scanline
-        uint16_t ioff = SAMPLES_HSYNC + SAMPLES_BACK_PORCH + (1*(DAC_FREQ / 1000000));
-        uint16_t irange = SAMPLES_PER_LINE - SAMPLES_FRONT_PORCH-(1*(DAC_FREQ / 1000000)) - ioff;
+        uint16_t ioff = SAMPLES_HSYNC + SAMPLES_BACK_PORCH + (1.025*(DAC_FREQ / 1000000)); // 312 + 372 + 68 = 752
+        uint16_t irange = SAMPLES_PER_LINE - SAMPLES_FRONT_PORCH-(1.025*(DAC_FREQ / 1000000)) - ioff; // 4256 - 132 - 68 - 752 = 3304
         uint16_t SAMPLES_PER_PIXEL = irange / XRESOLUTION;
 
     public:
@@ -130,7 +139,7 @@ class ColourPal {
 
 
             // display a test card by default
-            this->setBuf(test_card_f);
+//            this->setBuf(test_card_f);
 //            setBuf((uint8_t*)1);
         }
 
@@ -170,7 +179,9 @@ class ColourPal {
 
         void calculateCarrier() {
             for (uint16_t i = 0; i < SAMPLES_PER_LINE; i++) {
-                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + ((130.0 + 135.0) / 180.0) * M_PI;
+                // the + here is a really fine adjustment on the carrier? tunes colour bars fading at the top
+                // the phase offset here is also odd
+                float x = float(i+2.2) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (-90.0 / 180.0) * M_PI;
                 COS2[i] = levelWhite*cosf(x); // odd lines
                 SIN2[i] = levelWhite*sinf(x); // even lines (sin vs cos gives the phase shift)
             }
@@ -216,6 +227,7 @@ class ColourPal {
                     rgb2yuv(0, 0, 0, y, u, v);
 
                 // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
+                // +- cos is flipped...
                 colourbarsOdd[i+ioff]  = levelBlank + (y * levelWhite + u * SIN2[i] - v * COS2[i]) / 128;
                 // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
                 colourbarsEven[i+ioff] = levelBlank + (y * levelWhite + u * SIN2[i] + v * COS2[i]) / 128;
@@ -230,8 +242,8 @@ class ColourPal {
 
 
         void dmaHandler() {
-        uint8_t bufferOdd[SAMPLES_PER_LINE];
-        uint8_t bufferEven[SAMPLES_PER_LINE];
+//        uint8_t bufferOdd[SAMPLES_PER_LINE];
+//        uint8_t bufferEven[SAMPLES_PER_LINE];
 
 while (true) {
             switch (currentline) {
@@ -355,6 +367,7 @@ dma_channel_wait_for_finish_blocking(dma_chan);
 
             // prepare data for next line? raise semaphore for it?
 //            dma_hw->ints0 = 1u << dma_chan;
+// dma_channel_acknowledge_irq0(dma_chan)?
         }
 
         void start() {
