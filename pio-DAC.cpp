@@ -1,45 +1,29 @@
-#include "pico/stdlib.h"
-#include "pico/multicore.h"
-#include "hardware/pio.h"
-#include "hardware/dma.h"
-#include "hardware/clocks.h"
-#include "hardware/xosc.h"
-#include "dac.pio.h"
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <math.h>
 
-// extras beyond the end incase integer badness
-uint8_t ADC_TABLE[100] = { 0, 3, 6, 11, 14, 18, 21, 25, 28, 31, 32, 35, 39, 43, 46, 50, 53, 57, 61, 70, 74, 77, 81, 84, 88, 92, 95, 96, 100, 105, 108, 112, 115,119,123, 126, 139, 142, 146, 149, 154, 156, 159, 161, 164, 167, 171, 174, 178, 181, 185, 189, 198, 202, 205, 209, 212, 216, 220, 223 ,224, 227, 230, 234, 237, 241, 244, 248, 251, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255 };
+#include "pico/stdlib.h"
+#include "pico/multicore.h"
+#include "hardware/pio.h"
+#include "hardware/dma.h"
+#include "hardware/irq.h"
+#include "hardware/clocks.h"
+#include "dac.pio.h"
+#include "testcardf.h"
 
-uint8_t levelConversion(uint8_t in) {
-    return ADC_TABLE[in];
-}
+#define CLOCK_SPEED 266e6
+#define CLOCK_DIV 4
+#define DAC_FREQ (CLOCK_SPEED / CLOCK_DIV) // this should be 
+
+#include "colourpal.h"
+
+int dma_chan32;
 
 void core1_entry();
 
-#define YRESOLUTION 250
-#define YDATA_START 43
-#define YDATA_END (YDATA_START+YRESOLUTION)
-#define YDATA_NEXTFIELD 312
-
-
-
-int dma_chan, dma_chan32;
-
-double DACfreq;
-uint32_t samplesLine;
-double syncVolts, blankVolts, blackVolts, whiteVolts;
-uint8_t levelSync, levelBlank, levelBlack, levelWhite;
-double levelBlankU, levelWhiteU, levelColorU;
-
 int main() {
-//    stdio_init_all();
-//    set_sys_clock_khz(284000, true);
-    set_sys_clock_khz(266000, true);
-//    xosc_init(); // hardware oscillator for more stable clocks?
+    set_sys_clock_khz(CLOCK_SPEED/1e3, true);
 
     gpio_init(18);
     gpio_init(19);
@@ -55,49 +39,8 @@ int main() {
     sleep_ms(1000);
     gpio_put(20, 1); // B
 
-    uint8_t frequency_divider = 4;
-    uint8_t frequency_divider_frac = 0;
-
-    DACfreq = clock_get_hz(clk_sys) / (frequency_divider + frequency_divider_frac/256) / 1; // keep a nice ratio of system clock?
-//    DACfreq *= 0.98; // calibration?
-//    DACfreq *= 1.0001; // calibration?
-//printf("%0.2f\n", DACfreq);
-    samplesLine = 64 * DACfreq / 1000000; // 64 microseconds
-    double divpervolt = 70 / 1.02; // ADC scaling
-    syncVolts = -0.3;
-    blankVolts = 0.0; 
-    blackVolts =  0.0;
-    whiteVolts = 0.4; // any higher than 0.2 and integer wrapping on green since the DAC really should have been 0 to 1.25 volts
-    levelSync = 0;
-    levelBlank = levelConversion(uint8_t((blankVolts - syncVolts) * divpervolt + 0.5));
-    levelBlack = levelConversion(uint8_t((blackVolts - syncVolts) * divpervolt + 0.5));
-    levelWhite = levelConversion(uint8_t((whiteVolts - syncVolts) * divpervolt + 0.5));
-    levelBlankU = (blankVolts - syncVolts) * divpervolt + 0.5;
-    levelWhiteU = (whiteVolts - syncVolts) * divpervolt + 0.5;
-    levelColorU = 0.15 * divpervolt + 0.5; // scaled and used to add on top of other signal
-
-    PIO pio = pio0;
-    int sm = 0;
-    int offset = pio_add_program(pio, &dac_program);
-    dac_program_init(pio, sm, offset, 0, frequency_divider, frequency_divider_frac);
-
-    dma_chan = dma_claim_unused_channel(true);
-    dma_channel_config channel_config = dma_channel_get_default_config(dma_chan);
-
-    channel_config_set_transfer_data_size(&channel_config, DMA_SIZE_8); // transfer 8 bits at a time
-    channel_config_set_read_increment(&channel_config, true); // go down the buffer as it's read
-    channel_config_set_write_increment(&channel_config, false); // always write the data to the same place
-    channel_config_set_dreq(&channel_config, pio_get_dreq(pio, sm, true));
-
-    dma_channel_configure(dma_chan,
-                          &channel_config,
-                          &pio->txf[sm], // write address
-                          NULL, // read address
-                          samplesLine, // number of data transfers to 
-                          false // start immediately
-    );
-
-    dma_chan32 = dma_claim_unused_channel(true);
+    // second DMA channel for faster copies
+/*    dma_chan32 = dma_claim_unused_channel(true);
     dma_channel_config channel_config32 = dma_channel_get_default_config(dma_chan32);
 
     channel_config_set_transfer_data_size(&channel_config32, DMA_SIZE_32); // transfer 32 bits at a time
@@ -108,156 +51,31 @@ int main() {
                           &channel_config32,
                           NULL, // write address
                           NULL, // read address
-                          samplesLine/4, // number of data transfers to 
+                          SAMPLES_PER_LINE / 4, // number of data transfers to 
                           false // start immediately
-    );
-
+    );*/
 
 //    multicore_launch_core1(core1_entry);
-//    while (1) { sleep_us(1); } // need this for USB!
 
-    core1_entry();
+    cp.init();
+    cp.start();
+    while (1) { tight_loop_contents(); } // need this for USB!
+
+//    core1_entry();
 }
 
-void resetLines(uint8_t line1[], uint8_t line3[], uint8_t line4[], uint8_t line6[], uint8_t line313[], uint8_t aline[]) {
 
-    // sync is lower, blank is in the middle
-    for (uint32_t i = 0; i < samplesLine; i++) {
-        line1[i] = levelSync;
-        line3[i] = levelSync;
-        line4[i] = levelSync;
-        line6[i] = levelBlank;
-        line313[i] = levelSync;
-        aline[i] = levelBlank; // just blank
-    }
 
-}
 
-uint32_t samplesGap, samplesShortPulse, samplesHsync, samplesBackPorch, samplesFrontPorch, samplesUntilBurst, samplesBurst;
-uint32_t halfLine;
-
-void populateLines(uint8_t line1[], uint8_t line3[], uint8_t line4[], uint8_t line6[], uint8_t line313[], uint8_t aline[], 
-        uint8_t line6odd[], uint8_t line6even[], uint8_t alineOdd[], uint8_t alineEven[]) {
-    uint32_t i;
-    for (i = halfLine-samplesGap-1; i < halfLine; i++) { // broad sync x2
-        line1[i] = levelBlank;
-        line1[i+halfLine] = levelBlank;
-    }
-    for (i = halfLine-samplesGap-1; i < halfLine; i++) { // first half broad sync
-        line3[i] = levelBlank;
-    }
-    for (i = halfLine+samplesShortPulse; i < samplesLine; i++) { // second half short pulse
-        line3[i] = levelBlank;
-    }
-    for (i = halfLine+samplesShortPulse; i < samplesLine; i++) { // short pulse x2
-        line4[i-halfLine] = levelBlank;
-        line4[i] = levelBlank;
-    }
-    for (i = 0; i < samplesHsync; i++) { // horizontal sync
-        line6[i] = levelSync;
-        aline[i] = levelSync;
-    }
-    for (i = halfLine-samplesGap-1; i < halfLine; i++) { // first half short pulse
-        line313[i+halfLine] = levelBlank;
-    }
-    for (i = halfLine+samplesShortPulse; i < samplesLine; i++) { // second half broad sync
-        line313[i-halfLine] = levelBlank;;//
-    }
-    for (i = samplesHsync; i < samplesHsync+samplesBackPorch; i++) { // back porch
-        aline[i] = levelBlank;
-    }
-    for (i = samplesLine-samplesFrontPorch; i < samplesLine; i++) { // front porch
-        aline[i] = levelBlank;
-    }
-    for (i = samplesHsync+samplesBackPorch; i < samplesLine-samplesFrontPorch; i++) {
-//        aline[i] = levelWhite;
-    }
-
-    memcpy(line6odd, line6, samplesLine);
-    memcpy(line6even, line6, samplesLine);
-
-    memcpy(alineOdd, aline, samplesLine);
-    memcpy(alineEven, aline, samplesLine);
-}
-
-void calculateCarrier(double colourCarrier, double COS[], double SIN[]) {
-    for (uint32_t i = 0; i < samplesLine; i++) {
-        double x = double(i)/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
-        COS[i] = cosf(x); // odd lines
-        SIN[i] = sinf(x); // even lines
-//COS[i] = 0;
-//SIN[i] = 0;
-/*        if (COS[i] > 0) // square wave approximation
-            COS[i] = 1;
-        else
-            COS[i] = -1;
-        if (SIN[i] > 0)
-            SIN[i] = 1;
-        else
-            SIN[i] = -1;*/
-    }
-}
-
-void populateBurst(double COS[], double SIN[], uint8_t burstOdd[], uint8_t burstEven[], 
-        uint8_t line6odd[], uint8_t line6even[], uint8_t alineOdd[], uint8_t alineEven[]) {
-    for (uint32_t i = 0; i < samplesBurst; i++) {
-        burstOdd[i] = levelConversion(levelColorU*COS[i] + levelBlankU); // with out addition it would try and be negative
-        burstEven[i] = levelConversion(levelColorU*SIN[i] + levelBlankU);
-    }
-
-    memcpy(line6odd+samplesUntilBurst, burstOdd, samplesBurst);
-    memcpy(line6even+samplesUntilBurst, burstEven, samplesBurst);
-    memcpy(alineOdd+samplesUntilBurst, burstOdd, samplesBurst);
-    memcpy(alineEven+samplesUntilBurst, burstEven, samplesBurst);
-}
+/*
 
 bool active = false;
 
-// why are g and r flipped? who knwos...
-void rgb2yuv(double g, double r, double b, double &y, double &u, double &v) {
-    y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
-    u = 0.493 * (b - y);
-    v = 0.877 * (r - y);
-}
 
 void core1_entry() {
 
-    double colourCarrier = 4433618.75;//*1.1692; // the exact 1.1692?
-//    double colourCarrier = 4.88e6;
-// 4.88e6 on the inside, 5.15e6 on the outside ( while 1us delay, 200 mhz sysclock)
-// 5 to 5.39 - 5.09 to 5.10 or 5.17 to 5.18
-//    double colourCarrier = 5.18e6; // - OK with no loop and half line only
-//    double colourCarrier = 2e6;
-//    double colourCarrier = 1e5; // testing with picoscope
 
-    uint8_t bufferline[2][samplesLine];
-
-    uint8_t line1[samplesLine];
-    uint8_t line3[samplesLine];
-    uint8_t line4[samplesLine];
-    uint8_t line6[samplesLine];
-    uint8_t line6odd[samplesLine];
-    uint8_t line6even[samplesLine];
-    uint8_t line313[samplesLine];
-    uint8_t aline[samplesLine];
-    uint8_t alineOdd[samplesLine];
-    uint8_t alineEven[samplesLine];
-
-    double COS[samplesLine];
-    double SIN[samplesLine];
-
-    samplesGap = 4.7 * DACfreq / 1000000;
-    samplesShortPulse = 2.35 * DACfreq / 1000000;
-    samplesHsync = 4.7 * DACfreq / 1000000;
-    samplesBackPorch = 5.7 * DACfreq / 1000000;
-    samplesFrontPorch = 2 * DACfreq / 1000000;
-    samplesUntilBurst = 5.6 * DACfreq / 1000000; // burst starts at this time
-    samplesBurst = 2.7 * DACfreq / 1000000;
-
-    halfLine = samplesLine / 2;
-
-    uint8_t burstOdd[samplesBurst]; // for odd lines
-    uint8_t burstEven[samplesBurst]; // for even lines
+    uint8_t bufferline[2][SAMPLES_PER_LINE];
 
     uint32_t i;
     uint8_t* alllines[313+1];
@@ -334,10 +152,10 @@ void core1_entry() {
             calculateCarrier(colourCarrier, COS, SIN); // pre-calculate sine and cosine
             populateBurst(COS, SIN, burstOdd, burstEven, line6odd, line6even, alineOdd, alineEven); // put colour burst in arrays
 
-//            for (i = samplesHsync+samplesBackPorch+(0.75*(DACfreq / 1000000)); i < halfLine; i++)
-            uint32_t ioff = samplesHsync+samplesBackPorch+(1*(DACfreq / 1000000));
+//            for (i = samplesHsync+samplesBackPorch+(0.75*(DAC_FREQ / 1000000)); i < halfLine; i++)
+            uint32_t ioff = samplesHsync+samplesBackPorch+(1*(DAC_FREQ / 1000000));
             uint32_t ioff2 = ioff - 5;
-            uint32_t irange = samplesLine-samplesFrontPorch-(1*(DACfreq / 1000000)) - ioff;
+            uint32_t irange = SAMPLES_PER_LINE-samplesFrontPorch-(1*(DAC_FREQ / 1000000)) - ioff;
             for (i = ioff; i < ioff + irange; i++) {
 
 
@@ -389,4 +207,4 @@ void core1_entry() {
 //        if (numframes++ == 150) { active = false; }
     
     }
-}
+}*/

@@ -8,8 +8,16 @@
 .wrap
 
 % c-sdk {
+
+// lookup table to get near-linear DAC output
+// the actual DAC range is 0-70 to represeont 0-1 V
+// extra values beyond the end of the range are there incase of integer badness
+#define DIVISIONS_PER_VOLT (70 / 1) // ADC scaling
+uint8_t ADC_TABLE[100] = { 0, 3, 6, 11, 14, 18, 21, 25, 28, 31, 32, 35, 39, 43, 46, 50, 53, 57, 61, 70, 74, 77, 81, 84, 88, 92, 95, 96, 100, 105, 108, 112, 115,119,123, 126, 139, 142, 146, 149, 154, 156, 159, 161, 164, 167, 171, 174, 178, 181, 185, 189, 198, 202, 205, 209, 212, 216, 220, 223 ,224, 227, 230, 234, 237, 241, 244, 248, 251, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255 };
+uint8_t levelConversion(uint8_t in) { return ADC_TABLE[in]; }
+
 #define PIN_COUNT 8
-static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base, uint8_t divider, uint8_t div_frac) {
+static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base, uint8_t divider) {
     for(uint i=pin_base; i<pin_base+PIN_COUNT; i++) {
         pio_gpio_init(pio, i);
     }
@@ -18,14 +26,19 @@ static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base
     pio_sm_config c = dac_program_get_default_config(offset); // get a default config, this function call is auto-generated
 
     // change # of bits here if we want to write a 32-bit word and then go through it
-    sm_config_set_out_shift(&c, true, true, 8); // true - shift right, auto pull, # of bits
+    sm_config_set_out_shift(&c, true, true, 32); // true - shift right, auto pull, # of bits
 
     sm_config_set_out_pins(&c, pin_base, PIN_COUNT);
 
-//    sm_config_set_clkdiv(&c, divider);
-    sm_config_set_clkdiv_int_frac(&c, divider, div_frac);
+    sm_config_set_clkdiv(&c, divider);
+
+    // join the FIFO buffers to get more DMA throughput?
+    // we use the transmit only so join RX to the TX?
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
 
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
+    pio_sm_clear_fifos(pio, sm);
 }
+
 %}
