@@ -11,7 +11,8 @@
 #include <cstring>
 #include <math.h>
 
-uint8_t ADC_TABLE[70] = { 0, 3, 6, 11, 14, 18, 21, 25, 28, 31, 32, 35, 39, 43, 46, 50, 53, 57, 61, 70, 74, 77, 81, 84, 88, 92, 95, 96, 100, 105, 108, 112, 115,119,123, 126, 139, 142, 146, 149, 154, 156, 159, 161, 164, 167, 171, 174, 178, 181, 185, 189, 198, 202, 205, 209, 212, 216, 220, 223 ,224, 227, 230, 234, 237, 241, 244, 248, 251, 255 };
+// extras beyond the end incase integer badness
+uint8_t ADC_TABLE[100] = { 0, 3, 6, 11, 14, 18, 21, 25, 28, 31, 32, 35, 39, 43, 46, 50, 53, 57, 61, 70, 74, 77, 81, 84, 88, 92, 95, 96, 100, 105, 108, 112, 115,119,123, 126, 139, 142, 146, 149, 154, 156, 159, 161, 164, 167, 171, 174, 178, 181, 185, 189, 198, 202, 205, 209, 212, 216, 220, 223 ,224, 227, 230, 234, 237, 241, 244, 248, 251, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255 };
 
 uint8_t levelConversion(uint8_t in) {
     return ADC_TABLE[in];
@@ -65,7 +66,7 @@ int main() {
     syncVolts = -0.3;
     blankVolts = 0.0; 
     blackVolts =  0.0;
-    whiteVolts = 0.4; // anyhigher and integer wrapping?
+    whiteVolts = 0.3; // any higher and integer wrapping on green since the DAC really should have been 0 to 1.25 volts
     levelSync = 0;
     levelBlank = levelConversion(uint8_t((blankVolts - syncVolts) * divpervolt + 0.5));
     levelBlack = levelConversion(uint8_t((blackVolts - syncVolts) * divpervolt + 0.5));
@@ -219,11 +220,11 @@ void core1_entry() {
 // 5 to 5.39 - 5.09 to 5.10 or 5.17 to 5.18
 //    double colourCarrier = 5.18e6; // - OK with no loop and half line only
 //    double colourCarrier = 2e6;
-//    double colourCarrier = 1e5;
+//    double colourCarrier = 1e5; // testing with picoscope
 
-    double r = 0.35; // g ?
-    double g = 0.8; // r ?
-    double b = 0.0;
+    double r = 0.5; // g ?
+    double g = 1; // r ?
+    double b = 0;
     double y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
     double u = 0.493 * (b - y);
     double v = 0.877 * (r - y);
@@ -339,6 +340,9 @@ void core1_entry() {
                 alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i-ioff] + v * COS[i-ioff]));
                 // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
                 alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i-ioff] - v * COS[i-ioff]));
+
+
+
 
 //                alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + v * SIN[i] + u * COS[i]));
 //                alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + v * SIN[i] - u * COS[i]));
