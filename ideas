@@ -1,10 +1,11 @@
-still not quite right on a digital set
-    seems to be working with a 266 system clock and /4 divider
+if 266/4 works, shouldn't 133/2?
 
-use pio nops to create different timings?
-    /3 could be done, but didn't seem to really help (maybe got it to help once..., but couldn't reproduce)
+what about 266/8? more time for processing other things...
+
+put into one object reading off a framebuffer
+
+test with regular pico and same DAC
+
+test with pico in regular vga board DAC
 
 
-
-i wonder if this might be working because it's a little cooked from so much overclocking?
-when plugged into some usb ports the tiny2040 is no longer detected

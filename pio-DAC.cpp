@@ -22,7 +22,6 @@
 
 #include "colourpal.h"
 
-int dma_chan32;
 
 void core1_entry();
 
@@ -42,22 +41,6 @@ int main() {
     gpio_put(20, 0); // B
     sleep_ms(1000);
     gpio_put(20, 1); // B
-
-    // second DMA channel for faster copies
-/*    dma_chan32 = dma_claim_unused_channel(true);
-    dma_channel_config channel_config32 = dma_channel_get_default_config(dma_chan32);
-
-    channel_config_set_transfer_data_size(&channel_config32, DMA_SIZE_32); // transfer 32 bits at a time
-    channel_config_set_read_increment(&channel_config32, true); 
-    channel_config_set_write_increment(&channel_config32, true);
-
-    dma_channel_configure(dma_chan32,
-                          &channel_config32,
-                          NULL, // write address
-                          NULL, // read address
-                          SAMPLES_PER_LINE / 4, // number of data transfers to 
-                          false // start immediately
-    );*/
 
     multicore_launch_core1(core1_entry);
 

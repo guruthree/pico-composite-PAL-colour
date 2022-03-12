@@ -65,6 +65,10 @@ class ColourPal {
         uint8_t colourbarsOdd[SAMPLES_PER_LINE];
         uint8_t colourbarsEven[SAMPLES_PER_LINE];
 
+        // the next line coming up
+        uint8_t bufferOdd[SAMPLES_PER_LINE];
+        uint8_t bufferEven[SAMPLES_PER_LINE];
+
         uint8_t* buf; // image data we are displaying
         uint16_t currentline = 1;
         bool led = false;
@@ -241,11 +245,13 @@ class ColourPal {
                 case YDATA_START ... YDATA_END: // in the absence of anything else, empty lines
                     if (currentline & 1) { // odd
 //                        dma_channel_set_read_addr(dma_chan, line6odd, true);
-                        dma_channel_set_read_addr(dma_chan, colourbarsOdd, true);
+//                        dma_channel_set_read_addr(dma_chan, colourbarsOdd, true);
+                        dma_channel_set_read_addr(dma_chan, bufferOdd, true);
                     }
                     else {
 //                        dma_channel_set_read_addr(dma_chan, line6even, true);
-                        dma_channel_set_read_addr(dma_chan, colourbarsEven, true);
+//                        dma_channel_set_read_addr(dma_chan, colourbarsEven, true);
+                        dma_channel_set_read_addr(dma_chan, bufferEven, true);
                     }
                     break;
                 case YDATA_END+1 ...309:
@@ -271,6 +277,16 @@ class ColourPal {
                 currentline = 1;
             }
 //} // while (true)
+
+
+            if (currentline & 1) { // odd, next line is even
+                memcpy(bufferEven, colourbarsEven, SAMPLES_PER_LINE);
+            }
+            else {
+                memcpy(bufferOdd, colourbarsOdd, SAMPLES_PER_LINE);
+            }
+
+
             // prepare data for next line? raise semaphore for it?
             dma_hw->ints0 = 1u << dma_chan;
         }
