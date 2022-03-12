@@ -1,4 +1,4 @@
-// this is in YYSUUSVV
+// this is in YYYYUUVV
 
 //uint8_t __not_in_flash("test_card") test_card_f[] = {
 uint8_t test_card_f[] = {

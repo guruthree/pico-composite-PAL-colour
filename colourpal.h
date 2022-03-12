@@ -243,17 +243,13 @@ class ColourPal {
                 int32_t SIN2 = levelWhite*sinf(x);
 
             if (COS2 > 0)
-//            COS2 = levelWhite;
-            COS2 = 1;
+            COS2 = levelWhite;
             else
-//            COS2 = -levelWhite;
-            COS2 = -1;
+            COS2 = -levelWhite;
             if (SIN2 > 0)
-//            SIN2 = levelWhite;
-            SIN2 = 1;
+            SIN2 = levelWhite;
             else
-//            SIN2 = -levelWhite;
-            SIN2 = -1;
+            SIN2 = -levelWhite;
 
                 // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
                 // +- cos is flipped...?
@@ -414,7 +410,8 @@ while (true) {
                         // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
                       // make y, u, v out of 127
 //                        y = ((*idx >> 1) & 0b01100000);
-                        y = levelWhite * ((*idx >> 1) & 0b01100000);
+//                        y = levelWhite * ((*idx >> 1) & 0b01100000);
+                        y = ((*idx << 6) & 0b11000000000000); // assuming levelWhite approx. equals 128
                         u = (((*idx >> 3) & 7) - 3) << 5;
 //                        v = (((*(idx++) & 7) - 3) << 5);
                         v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
