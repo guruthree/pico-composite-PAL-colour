@@ -9,31 +9,31 @@
 // timings - these are here as consts because the division needs to process
 // a horizontal line is 64 microseconds
 // this HAS to be divisible by 4 to use 32-bit DMA transfers
-const uint16_t SAMPLES_PER_LINE = 64 * DAC_FREQ / 1e6; // 4256
-const uint16_t SAMPLES_GAP = 4.693 * DAC_FREQ / 1e6; // 312
-const uint16_t SAMPLES_SHORT_PULSE = 2.347 * DAC_FREQ / 1e6; // 156
-const uint16_t SAMPLES_HSYNC = 4.693 * DAC_FREQ / 1e6; // 312
-const uint16_t SAMPLES_BACK_PORCH = 5.599 * DAC_FREQ / 1e6; // 372
-const uint16_t SAMPLES_FRONT_PORCH = 1.987 * DAC_FREQ / 1e6; // 132
-const uint16_t SAMPLES_UNTIL_BURST = 5.538 * DAC_FREQ / 1e6; // burst starts at this time, 368
-const uint16_t SAMPLES_BURST = 2.71 * DAC_FREQ / 1e6; // 180
-const uint16_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
+const uint32_t SAMPLES_PER_LINE = 64 * DAC_FREQ / 1e6; // 4256
+const uint32_t SAMPLES_GAP = 4.693 * DAC_FREQ / 1e6; // 312
+const uint32_t SAMPLES_SHORT_PULSE = 2.347 * DAC_FREQ / 1e6; // 156
+const uint32_t SAMPLES_HSYNC = 4.693 * DAC_FREQ / 1e6; // 312
+const uint32_t SAMPLES_BACK_PORCH = 5.599 * DAC_FREQ / 1e6; // 372
+const uint32_t SAMPLES_FRONT_PORCH = 1.987 * DAC_FREQ / 1e6; // 132
+const uint32_t SAMPLES_UNTIL_BURST = 5.538 * DAC_FREQ / 1e6; // burst starts at this time, 368
+const uint32_t SAMPLES_BURST = 2.71 * DAC_FREQ / 1e6; // 180
+const uint32_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
 
 // where we are copying data to in the scanline
-const uint16_t SAMPLES_OFF = (1.025*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts
-const uint16_t SAMPLES_PER_PIXEL = 20;
-const uint16_t SAMPLES_COLOUR = XRESOLUTION * SAMPLES_PER_PIXEL; // 3320 points of the colour data to send
+const uint32_t SAMPLES_OFF = (1.025*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts
+const uint32_t SAMPLES_PER_PIXEL = 20;
+const uint32_t SAMPLES_COLOUR = XRESOLUTION * SAMPLES_PER_PIXEL; // 3320 points of the colour data to send
 
-//const uint16_t SAMPLES_SYNC_PORCHES = SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH + SAMPLES_OFF + <whatever is leftover at the end of the colour data>; // 816
-const uint16_t SAMPLES_SYNC_PORCHES = SAMPLES_PER_LINE - SAMPLES_COLOUR; // 936
-const uint16_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_OFF; //    the samples at the end of signal right before front porch
+//const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH + SAMPLES_OFF + <whatever is leftover at the end of the colour data>; // 816
+const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_PER_LINE - SAMPLES_COLOUR; // 936
+const uint32_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_OFF; //    the samples at the end of signal right before front porch
 
 
 // convert to YUV for PAL encoding, RGB should be 0-127
 // no these are not the standard equations
 // part of that is integer maths, fine, but other wise...
 // no, I don't know why
-void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int16_t &y, int16_t &u, int16_t &v) {
+void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int32_t &v) {
     y = 5 * r / 16 + 9 * g / 16 + b / 8; // luminance
     u = (r - y);
     v = 13 * (b - y) / 16;
@@ -56,7 +56,7 @@ class ColourPal {
         const float BLANK_VOLTS = 0.0; // also black
         const float WHITE_VOLTS = 0.4; // any higher than 0.2 and integer wrapping on green since the DAC really should have been 0 to 1.25 volts
         const float BUSRT_VOLTS = 0.15;
-        uint8_t levelSync = 0, levelBlank, levelWhite, levelColor; // converted to DAC values
+        int32_t levelSync = 0, levelBlank, levelWhite, levelColor; // converted to DAC values
 
         // setup the DAC and DMA
         PIO pio;
@@ -79,8 +79,8 @@ class ColourPal {
 
         // for colour
         const float COLOUR_CARRIER = 4433618.75; // this needs to divide in some fashion into the DAC_FREQ
-        int16_t COS2[SAMPLES_COLOUR];
-        int16_t SIN2[SAMPLES_COLOUR];
+        int32_t COS2[SAMPLES_COLOUR];
+        int32_t SIN2[SAMPLES_COLOUR];
         // the colour burst
         uint8_t burstOdd[SAMPLES_BURST]; // for odd lines
         uint8_t burstEven[SAMPLES_BURST]; // for even lines
@@ -90,7 +90,7 @@ class ColourPal {
 
 
         uint8_t* buf = NULL; // image data we are displaying
-        uint16_t currentline = 1;
+        uint32_t currentline = 1;
         bool led = false;
 
     public:
@@ -200,7 +200,7 @@ class ColourPal {
         }
 
         void calculateCarrier() {
-            for (uint16_t i = 0; i < SAMPLES_COLOUR; i++) {
+            for (uint32_t i = 0; i < SAMPLES_COLOUR; i++) {
                 float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
                 COS2[i] = levelWhite*cosf(x); // odd lines
                 SIN2[i] = levelWhite*sinf(x); // even lines (sin vs cos gives the phase shift)
@@ -208,7 +208,7 @@ class ColourPal {
         }
 
         void populateBurst() {
-            for (uint16_t i = 0; i < SAMPLES_BURST; i++) {
+            for (uint32_t i = 0; i < SAMPLES_BURST; i++) {
                 // the + here is a really fine adjustment on the carrier? it tunes colour bars fading at the top.
                 // the phase offset here is also odd
                 float x = float(i-6.5) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
@@ -225,9 +225,9 @@ class ColourPal {
             memset( colourbarsOdd_B, levelBlank, SAMPLES_COLOUR);
             memset(colourbarsEven_B, levelBlank, SAMPLES_COLOUR);
 
-            for (uint16_t i = 0; i < SAMPLES_COLOUR; i++) {
+            for (uint32_t i = 0; i < SAMPLES_COLOUR; i++) {
 
-                int16_t y, u, v;
+                int32_t y, u, v;
                 if (i < (SAMPLES_COLOUR / 8))
                     rgb2yuv(127, 127, 127, y, u, v);
                 else if (i < (2 * SAMPLES_COLOUR / 8))
@@ -263,10 +263,10 @@ class ColourPal {
         void __time_critical_func(dmaHandler)() {
 uint8_t backbuffer_B[SAMPLES_COLOUR];
             memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
-//int16_t *dmavfactorp;
+//int32_t *dmavfactorp;
 
 while (true) {
-                    int16_t dmavfactor;
+                    int32_t dmavfactor;
             switch (currentline) {
                 case 1 ... 2:
                     dma_channel_set_read_addr(dma_channel_A, line1_A, true);
@@ -370,7 +370,7 @@ while (true) {
                 }
                 else {
 
-                    int8_t y = 0, u = 0, v = 0;
+                    int32_t y = 0, u = 0, v = 0;
 
                     uint8_t tbuf[SAMPLES_COLOUR];
 //                    memset(backbuffer_B, levelBlank, SAMPLES_COLOUR);
@@ -385,25 +385,17 @@ while (true) {
                     uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
 
 
-//                    for (uint16_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
-                    for (uint16_t i = 0; i < (SAMPLES_PER_PIXEL*17); i += SAMPLES_PER_PIXEL) {
-//                        y = (*idx >> 1) & 0b01111000; // y * 8
-//                        u = (*idx << 3) & 0b01100000; // u * 32
-//                        v = (*(idx++) << 5) & 0b01100000; // u * 32
-
-                        // make y, u, v out of 127... these may be negative? could be an issue
-
-// 2 bits y, 1 bit sign, 2bits u, 1 bit sign, 2 bits v
-                    y = *idx >> 6;
-                    u = ((*idx >> 3) & 7) - 3;
-                    v = (*(idx++) & 7) - 3;
+//                    for (uint32_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
+                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*22); i += SAMPLES_PER_PIXEL) {
+                    // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
                     // make y, u, v out of 127
-                    y = y * 32;
-                    u = u * 32;
-                    v = v * 32; 
+                    y = (*idx >> 1) & 0b01100000;
+                    u = (((*idx >> 3) & 7) - 3) << 5;
+                    v = ((*(idx++) & 7) - 3) << 5;
+                    // make y, u, v out of 127
 
-                        for (uint16_t dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL; dmai2++) { // SAMPLES_PER_PIXEL
-                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128 ;
+                        for (uint32_t dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL; dmai2++) { // SAMPLES_PER_PIXEL
+                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128;
 //                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + v * dmavfactorp[dmai2]) / 128 ;
                         }
                     }
