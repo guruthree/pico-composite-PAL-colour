@@ -1,11 +1,16 @@
-if 266/4 works, shouldn't 133/2?
+convert to use integer maths?
+lookup table for RGB -> YUV?
 
-what about 266/8? more time for processing other things...
+some issue with reading from large bmp array?
+lower colour depth? store as yuv?
+store in flash memory?
+YYYYUUVV?
+indexed colour?
 
-put into one object reading off a framebuffer
+
+clocked to fast to access flash memory?
 
 test with regular pico and same DAC
-
 test with pico in regular vga board DAC
 
 

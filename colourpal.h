@@ -17,8 +17,9 @@ const uint16_t SAMPLES_UNTIL_BURST = 5.55 * DAC_FREQ / 1e6; // burst starts at t
 const uint16_t SAMPLES_BURST = 2.7 * DAC_FREQ / 1e6; // we may want this to be divisble by 4 at some point?
 const uint16_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2;
 
-// why are g and r flipped? who knows...
-void rgb2yuv(float r, float g, float b, float &y, float &u, float &v) {
+// convert to YUV for PAL encoding, RGB should be 0-127
+// no these are not the standard equations, no I don't know why
+void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int16_t &y, int16_t &u, int16_t &v) {
     y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
     u = 2 * 0.493 * (r - y);
     v = 0.877 * (b - y);
@@ -35,7 +36,7 @@ class ColourPal {
         const float BLANK_VOLTS = 0.0; // also black
         const float WHITE_VOLTS = 0.4; // any higher than 0.2 and integer wrapping on green since the DAC really should have been 0 to 1.25 volts
         uint8_t levelSync = 0, levelBlank, levelWhite; // converted to DAC values
-        float levelBlankU, levelWhiteU, levelColorU; // not yet converted to DAC values
+        uint8_t levelBlankU, levelWhiteU, levelColorU; // not yet converted to DAC values
 
         // setup the DAC and DMA
         PIO pio;
@@ -52,10 +53,8 @@ class ColourPal {
 
         // for colour
         const float COLOUR_CARRIER = 4433618.75; // this needs to divide in some fashion into the DAC_FREQ
-        float COS[SAMPLES_BURST];
-        float SIN[SAMPLES_BURST];
-        float COS2[SAMPLES_PER_LINE];
-        float SIN2[SAMPLES_PER_LINE];
+        int8_t COS2[SAMPLES_PER_LINE];
+        int8_t SIN2[SAMPLES_PER_LINE];
         // the colour burst
         uint8_t burstOdd[SAMPLES_BURST]; // for odd lines
         uint8_t burstEven[SAMPLES_BURST]; // for even lines
@@ -74,7 +73,7 @@ class ColourPal {
         // where we are copying data to in the scanline
         uint16_t ioff = SAMPLES_HSYNC + SAMPLES_BACK_PORCH + (1*(DAC_FREQ / 1000000));
         uint16_t irange = SAMPLES_PER_LINE - SAMPLES_FRONT_PORCH-(1*(DAC_FREQ / 1000000)) - ioff;
-        uint8_t SAMPLES_PER_PIXEL = irange / 332;
+        uint8_t SAMPLES_PER_PIXEL = irange / XRESOLUTION;
 
     public:
         ColourPal() {}
@@ -117,8 +116,6 @@ class ColourPal {
             resetLines();
             // pre-calculate the colour carrier that the colour data is embeeded in
             calculateCarrier();
-//printf("here cc\n");
-//sleep_ms(1000);
             // pre-calculate colour burst (includes convserion to DAC voltages)
             populateBurst();
             // default simple test pattern
@@ -164,22 +161,18 @@ class ColourPal {
         }
 
         void calculateCarrier() {
-            for (uint16_t i = 0; i < SAMPLES_BURST; i++) {
-                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
-                COS[i] = cosf(x); // odd lines
-                SIN[i] = sinf(x); // even lines (sin vs cos gives the phase shift)
-            }
             for (uint16_t i = 0; i < SAMPLES_PER_LINE; i++) {
                 float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + ((130.0 + 135.0) / 180.0) * M_PI;
-                COS2[i] = cosf(x); // odd lines
-                SIN2[i] = sinf(x); // even lines (sin vs cos gives the phase shift)
+                COS2[i] = cosf(x)*127.0; // odd lines
+                SIN2[i] = sinf(x)*127.0; // even lines (sin vs cos gives the phase shift)
             }
         }
 
         void populateBurst() {
             for (uint16_t i = 0; i < SAMPLES_BURST; i++) {
-                burstOdd[i] = levelConversion(levelColorU*COS[i] + levelBlankU); // with out addition it would try and be negative
-                burstEven[i] = levelConversion(levelColorU*SIN[i] + levelBlankU);
+                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
+                burstOdd[i] = levelConversion(levelColorU*cosf(x) + levelBlankU); // with out addition it would try and be negative
+                burstEven[i] = levelConversion(levelColorU*sinf(x) + levelBlankU);
             }
 
             memcpy(line6odd+SAMPLES_UNTIL_BURST, burstOdd, SAMPLES_BURST);
@@ -193,32 +186,31 @@ class ColourPal {
         }
 
         void createColourBars() {
-//printf("here cb\n");
 
             for (uint16_t i = ioff; i < ioff + irange; i++) {
 
-                float y, u, v;
+                int16_t y, u, v;
                 if ((i - ioff) < (irange / 8))
-                    rgb2yuv(1, 1, 1, y, u, v);
+                    rgb2yuv(127, 127, 127, y, u, v);
                 else if ((i - ioff) < (2 * irange / 8))
-                    rgb2yuv(0.75, 0.75, 0, y, u, v);
+                    rgb2yuv(96, 96, 0, y, u, v);
                 else if ((i - ioff) < (3 * irange / 8))
-                    rgb2yuv(0, 0.75, 0.75, y, u, v);
+                    rgb2yuv(0, 96, 96, y, u, v);
                 else if ((i - ioff) < (4 * irange / 8))
-                    rgb2yuv(0, 0.75, 0, y, u, v);
+                    rgb2yuv(0, 96, 0, y, u, v);
                 else if ((i - ioff) < (5 * irange / 8))
-                    rgb2yuv(0.75, 0, 0.75, y, u, v);
+                    rgb2yuv(96, 0, 96, y, u, v);
                 else if ((i - ioff) < (6 * irange / 8))
-                    rgb2yuv(0.75, 0, 0, y, u, v);
+                    rgb2yuv(96, 0, 0, y, u, v);
                 else if ((i - ioff) < (7 * irange / 8))
-                    rgb2yuv(0, 0, 0.75, y, u, v);
+                    rgb2yuv(0, 0, 96, y, u, v);
                 else
                     rgb2yuv(0, 0, 0, y, u, v);
 
                 // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
-                colourbarsOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN2[i-ioff] - v * COS2[i-ioff]));
+                colourbarsOdd[i]  = levelConversion( levelBlankU + (levelWhiteU * (y * 128 + u * SIN2[i-ioff] - v * COS2[i-ioff])) / 16384);
                 // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
-                colourbarsEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN2[i-ioff] + v * COS2[i-ioff]));
+                colourbarsEven[i] = levelConversion( levelBlankU + (levelWhiteU * (y * 128 + u * SIN2[i-ioff] + v * COS2[i-ioff])) / 16384);
             }
 
 /*for (currentline = YDATA_START+31; currentline < YDATA_START+33; currentline++) {
@@ -270,7 +262,6 @@ sleep_ms(500);
                 case 4 ... 5:
                     dma_channel_set_read_addr(dma_chan, line4, true);
                     break;
-//                case 6 ... 22:
                 case 6 ... YDATA_START-1:
                     if (currentline & 1) { // odd
                         dma_channel_set_read_addr(dma_chan, line6odd, true);
@@ -279,16 +270,11 @@ sleep_ms(500);
                         dma_channel_set_read_addr(dma_chan, line6even, true);
                     }
                     break;
-//                case 23 ... 309: // in the absence of anything else, empty lines
                 case YDATA_START ... YDATA_END: // in the absence of anything else, empty lines
                     if (currentline & 1) { // odd
-//                        dma_channel_set_read_addr(dma_chan, line6odd, true);
-//                        dma_channel_set_read_addr(dma_chan, colourbarsOdd, true);
                         dma_channel_set_read_addr(dma_chan, bufferOdd, true);
                     }
                     else {
-//                        dma_channel_set_read_addr(dma_chan, line6even, true);
-//                        dma_channel_set_read_addr(dma_chan, colourbarsEven, true);
                         dma_channel_set_read_addr(dma_chan, bufferEven, true);
                     }
                     break;
@@ -317,34 +303,11 @@ sleep_ms(500);
                     memcpy(bufferOdd, colourbarsOdd, SAMPLES_PER_LINE);
 //                    memcpy(bufferOdd, line6odd, SAMPLES_PER_LINE);
                 }
-/*            }
-            else if (YDATA_START <= currentline && currentline <= YDATA_END) { // turn buffer into scan lines!
-                uint16_t i = ioff; // where we are in the scanline data
-                uint8_t *idx = buf + 0x8a + (currentline - YDATA_START) * 332 * 2; // where we are in the buffer data
-                for (uint8_t *idx2 = idx; idx2 < idx + 332 * 2; idx2 += 2) {
-                    uint16_t r5g6b5 = *idx2;
-                    uint8_t r = ((r5g6b5 >> 11) & 0x1F)/32;
-                    uint8_t g = ((r5g6b5 >> 5) & 0x3F)/64;
-                    uint8_t b = (r5g6b5 & 0x1F)/32;
-                    float y, u, v;
-                    rgb2yuv(r, g, b, y, u, v);
-                    for (uint16_t i2 = i; i2 < i + SAMPLES_PER_PIXEL; i2++) {
-                        if (currentline & 1) {
-                            bufferEven[i2] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN2[i2-ioff] + v * COS2[i2-ioff]));
-                        }
-                        else {
-                            bufferOdd[i2]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN2[i2-ioff] - v * COS2[i2-ioff]));
-                        }
-                    }
-                }
-            }*/
+//            }
 
 
 
-
-
-//dma_channel_wait_for_finish_blocking(dma_chan);
-            gpio_put(18, led = !led); // not flashing as it should be? without this here for a tiny delay it doesn't work!?
+            gpio_put(18, led = !led); // not flashing as it should be?
 
             currentline++;
             if (currentline == 313) {
