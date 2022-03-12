@@ -22,7 +22,7 @@
 
 
 int dma_chan32;
-void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
+inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
     dma_channel_set_trans_count(dma_chan32, size / 4, false);
     dma_channel_set_read_addr(dma_chan32, src, false);
     dma_channel_set_write_addr(dma_chan32, dst, true);
