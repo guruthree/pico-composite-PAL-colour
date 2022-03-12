@@ -12,9 +12,10 @@
 
 void core1_entry();
 
-#define XRESOLUTION 1000
-#define XDATA_START 232
-#define XDATA_END (XDATA_START+XRESOLUTION)
+// oops hard coded against frequency...
+//#define XRESOLUTION 1000
+//#define XDATA_START 232 // 240
+//#define XDATA_END (XDATA_START+XRESOLUTION)
 
 #define YRESOLUTION 250
 #define YDATA_START 44
@@ -23,7 +24,7 @@ void core1_entry();
 
 int main() {
 //    stdio_init_all();
-    set_sys_clock_khz(200000, true); // 160 MHz
+    set_sys_clock_khz(160000, true); // 160 MHz
 
     gpio_init(18);
     gpio_init(19);
@@ -39,14 +40,17 @@ int main() {
     sleep_ms(1000);
     gpio_put(20, 1); // B
 
-    float DACfreq = 20000000; // keep a nice ratio of system clock?
+    float DACfreq = 16e6; // keep a nice ratio of system clock?
+const uint16_t XRESOLUTION = DACfreq / 1e6 * 50;
+const uint16_t XDATA_START = DACfreq / 1e6 * 12;
+const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
     uint16_t samplesLine = 64 * DACfreq / 1000000; // 64 microseconds
     float Vcc = 1.02; // max VCC of DAC
     float dacPerVolt = 255.0 / Vcc;
     float syncVolts = -0.3;
     float blankVolts = 0.0; 
     float blackVolts =  0.0;
-    float whiteVolts = 0.5;
+    float whiteVolts = 0.4; // anyhigher and integer wrapping?
     uint8_t levelSync = 0;
     uint8_t levelBlank = (blankVolts - syncVolts) * dacPerVolt + 0.5;
     uint8_t levelBlack = (blackVolts - syncVolts) * dacPerVolt + 0.5;
@@ -107,17 +111,16 @@ int main() {
     uint8_t line318[samplesLine];
     uint8_t line623[samplesLine];
     uint8_t aline[samplesLine];
-    uint8_t redline[samplesLine];
-    uint8_t greenline[samplesLine];
-    uint8_t blueline[samplesLine];
+    uint8_t alineOdd[samplesLine];
+    uint8_t alineEven[samplesLine];
 
-    uint8_t samplesGap = 4.7 * DACfreq / 1000000;
-    uint8_t samplesShortPulse = 2.35 * DACfreq / 1000000;
-    uint8_t samplesHsync = 4.7 * DACfreq / 1000000;
-    uint8_t samplesBackPorch = 5.7 * DACfreq / 1000000;
-    uint8_t samplesFrontPorch = 1.65 * DACfreq / 1000000;
-    uint8_t samplesToBurst = 5.6 * DACfreq / 1000000; // burst starts here
-    uint8_t samplesBurst = 2.25 * DACfreq / 1000000 - 1; // -1 with 20mhz DAC gives 44 which is aligned to 4 bytes
+    uint16_t samplesGap = 4.7 * DACfreq / 1000000;
+    uint16_t samplesShortPulse = 2.35 * DACfreq / 1000000;
+    uint16_t samplesHsync = 4.7 * DACfreq / 1000000;
+    uint16_t samplesBackPorch = 5.7 * DACfreq / 1000000;
+    uint16_t samplesFrontPorch = 1.65 * DACfreq / 1000000;
+    uint16_t samplesUntilBurst = 5.6 * DACfreq / 1000000; // burst starts at this time
+    uint16_t samplesBurst = 2.5 * DACfreq / 1000000;
 
     uint16_t halfLine = samplesLine/2;
 
@@ -138,20 +141,18 @@ int main() {
     uint8_t burstEven[samplesBurst]; // for even lines
     uint8_t burstOdd[samplesBurst]; // for odd lines
     for (i = 0; i < samplesBurst; i++) {
-        double x = i/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
-        burstEven[i] = levelColor*sin(x);
-        burstOdd[i] = levelColor*cos(x);
+        float x = i/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
+        burstOdd[i] = levelColor*cos(x) + levelBlank; // with out addition it would try and be negative
+        burstEven[i] = levelColor*sin(x) + levelBlank;
     }
-    uint8_t colourEven[XRESOLUTION];
-    uint8_t colourOdd[XRESOLUTION];
+    float COS[XRESOLUTION];
+    float SIN[XRESOLUTION];
     for (i = 0; i < XRESOLUTION; i++) {
-        double x = i/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
-        colourEven[i] = levelColor*sin(x);
-        colourOdd[i] = levelColor*cos(x);
+        float x = i/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
+        COS[i] = cos(x);
+        SIN[i] = sin(x);
     }
 
-
-// might need to remove -1/add+1 to adjust timing?
     for (i = halfLine-samplesGap-1; i < halfLine; i++) { // broad sync x2
         line1[i] = levelBlank;
         line1[i+halfLine] = levelBlank;
@@ -195,7 +196,7 @@ int main() {
 //        aline[i] = levelBlank+i/8;
 //    }
     for (i = XDATA_START; i < XDATA_END; i++) {
-//        aline[i] = levelWhite;
+        aline[i] = levelWhite;
     }
 
     // effective 'resolution' 999x260, but vertical distinction, it's more like 333x250
@@ -207,9 +208,32 @@ int main() {
     }*/
 
 
-    memcpy(redline, aline, samplesLine);
-    memcpy(greenline, aline, samplesLine);
-    memcpy(blueline, aline, samplesLine);
+    memcpy(alineOdd, aline, samplesLine);
+    memcpy(alineEven, aline, samplesLine);
+
+    memcpy(alineOdd+samplesUntilBurst, burstOdd, samplesBurst);
+    memcpy(alineEven+samplesUntilBurst, burstEven, samplesBurst);
+
+//    for (i = samplesUntilBurst/4; i < (samplesUntilBurst+samplesBurst)/4; i++) {
+//        ((uint32_t*)alineOdd)[i] = ((uint32_t*)burstOdd)[i-samplesUntilBurst/4];
+//        ((uint32_t*)alineEven)[i] = ((uint32_t*)burstEven)[i-samplesUntilBurst/4];
+//    }
+//    for (i = XDATA_START/4; i < XDATA_END/4; i++) {
+//        ((uint32_t*)alineOdd)[i] += ((uint32_t*)colourOdd)[i-XDATA_START/4];
+//        ((uint32_t*)alineEven)[i] += ((uint32_t*)colourEven)[i-XDATA_START/4];
+//    }
+
+
+    float r = 1;
+    float g = 0;
+    float b = 0;
+    float y = 0.299 * r + 0.587 * g + 0.114 * b; 
+    float u = 0.493 * (b - y);
+    float v = 0.877 * (r - y);
+    for (i = 0; i < XRESOLUTION; i++) {
+        alineOdd[XDATA_START+i] = levelBlank + levelWhite * (y +  u * SIN[i] + v * COS[i]);
+        alineEven[XDATA_START+i] =  levelBlank + levelWhite * (y + u * SIN[i] - v * COS[i]);
+    }
 
 
 
@@ -245,8 +269,8 @@ int main() {
     alllines[624] = line4;
     alllines[625] = line4;
 
-//    for (i = YDATA_START; i < YDATA_END; i+=1) {
-    for (i = YDATA_START+50; i < YDATA_START+100; i+=1) {
+    for (i = YDATA_START; i < YDATA_END; i+=1) {
+//    for (i = YDATA_START+50; i < YDATA_START+100; i+=1) {
         alllines[i] = aline; // both fields
         alllines[i+YDATA_NEXTFIELD] = aline;
     }
@@ -261,12 +285,10 @@ int main() {
 
 //    multicore_launch_core1(core1_entry);
 
-    uint64_t a, b;
+//    uint64_t a, b;
     bool led = false;
     uint8_t bufferline[2][samplesLine];
     uint8_t bat = 0;
-    uint8_t *burstOE;
-    uint8_t *colourOE;
     while (1) {
 
 //        a = to_us_since_boot(get_absolute_time());
@@ -280,48 +302,24 @@ int main() {
             if (bat == 2) {
                 bat = 0;
             }
-            // ~7 us?
-//            memcpy(bufferline[bat], alllines[at], samplesLine); // can replace with a DMA to speed up?
-            // ~ 2us
-            dma_channel_set_read_addr(dma_chan32, alllines[at], false);
+
+//            if (at > 50 && at < 311) {
+            if (at >= YDATA_START && at < YDATA_END) {
+                if (at & 1) { // odd
+                    dma_channel_set_read_addr(dma_chan32, alineOdd, false);
+                }
+                else { // even
+                    dma_channel_set_read_addr(dma_chan32, alineEven, false);
+                }
+            }
+            else {
+                dma_channel_set_read_addr(dma_chan32, alllines[at], false);
+            }
+
             dma_channel_set_write_addr(dma_chan32, bufferline[bat], true);
             dma_channel_wait_for_finish_blocking(dma_chan32);
             // if the write addr isn't NULL, it causes some sort of memory contention slowing down the rest of the loop
             dma_channel_set_write_addr(dma_chan32, NULL, false);
-
-
-            if (at & 1) { // odd
-                burstOE = burstOdd;
-                colourOE = colourOdd;
-            }
-            else { // even
-                burstOE = burstEven;
-                colourOE = colourEven;
-            }
-
-
-            // add colour burst to the next to be sent line
-//            if ((at > 5 && at < 311) || (at > 318 && at < 624)) {
-//            }
-
-            // add colour data to the next to be sent line
-//            if ((at >= YDATA_START && at < YDATA_END) || (at >= YDATA_START+YDATA_NEXTFIELD && at < YDATA_END+YDATA_NEXTFIELD)) {
-
-//                for (i = samplesToBurst; i < samplesToBurst+samplesBurst; i++) {
-//                    bufferline[bat][i] += burstOE[i-samplesToBurst];
-//            if (at > 5 && at < 311) {
-//            }
-
-            if (at >= YDATA_START && at < YDATA_END) {
-//                for (i = XDATA_START; i < XDATA_END; i++) {
-//                    bufferline[bat][i] += colourOE[i-XDATA_START];
-                for (i = samplesToBurst/4; i < (samplesToBurst+samplesBurst)/4; i++) {
-                    ((uint32_t*)bufferline[bat])[i] += ((uint32_t*)burstOE)[i-samplesToBurst/4];
-                }
-                for (i = XDATA_START/4; i < XDATA_END/4; i++) {
-                    ((uint32_t*)bufferline[bat])[i] += ((uint32_t*)colourOE)[i-XDATA_START/4];
-                }
-            }
 
         }
 
