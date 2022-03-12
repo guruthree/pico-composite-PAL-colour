@@ -1,7 +1,9 @@
 .program dac
 
 .wrap_target
+;    nop
 ;    pull block
+;    nop
     out pins, 8
 .wrap
 

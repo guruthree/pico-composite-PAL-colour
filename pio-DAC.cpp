@@ -37,8 +37,9 @@ double levelBlankU, levelWhiteU, levelColorU;
 
 int main() {
 //    stdio_init_all();
-    set_sys_clock_khz(284000, true);
-    xosc_init(); // hardware oscillator for more stable clocks?
+//    set_sys_clock_khz(284000, true);
+    set_sys_clock_khz(266000, true);
+//    xosc_init(); // hardware oscillator for more stable clocks?
 
     gpio_init(18);
     gpio_init(19);
@@ -57,7 +58,7 @@ int main() {
     uint8_t frequency_divider = 4;
     uint8_t frequency_divider_frac = 0;
 
-    DACfreq = clock_get_hz(clk_sys) / (frequency_divider + frequency_divider_frac/256); // keep a nice ratio of system clock?
+    DACfreq = clock_get_hz(clk_sys) / (frequency_divider + frequency_divider_frac/256) / 1; // keep a nice ratio of system clock?
 //    DACfreq *= 0.98; // calibration?
 //    DACfreq *= 1.0001; // calibration?
 //printf("%0.2f\n", DACfreq);

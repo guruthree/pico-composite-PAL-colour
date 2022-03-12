@@ -1,17 +1,10 @@
-remove lines, just have a really long colour burst at a low freq
+still not quite right on a digital set
+    seems to be working with a 266 system clock and /4 divider
 
-run at a low carrier frequency and use the picoscope
-
-try changing system clock and see if reproduced frequency changes
-
-check if the rising (not -0.3 bit) of the composite signal has the correct length
-the 66 vs 64 us time difference could just be tacked onto the end while the code shuffles
+use pio nops to create different timings?
+    /3 could be done, but didn't seem to really help (maybe got it to help once..., but couldn't reproduce)
 
 
 
-===
-
-it seems like a clock divider of 2 stretches things a bit
-and odd/prime number dividers cause the signal to be malformed
-
-
+i wonder if this might be working because it's a little cooked from so much overclocking?
+when plugged into some usb ports the tiny2040 is no longer detected
