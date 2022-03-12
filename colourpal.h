@@ -32,26 +32,17 @@ const uint32_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH -
 // convert to YUV for PAL encoding, RGB should be 0-127
 // no these are not the standard equations
 // part of that is integer maths, fine, but other wise...
-// no, I don't know why
+// no, I don't know why it's so far from the standard equations
 void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int32_t &v) {
     y = 5 * r / 16 + 9 * g / 16 + b / 8; // luminance
     u = (r - y);
     v = 13 * (b - y) / 16;
 }
 
-// the next lines coming up
+// the line of colour data being displayed
+// put it in its own SRAM bank for most reliable fast RAM access
 uint8_t __scratch_y("screenbuffer") screenbuffer_B[SAMPLES_COLOUR];
-//uint8_t __scratch_y("backbuffer") backbuffer_B[SAMPLES_COLOUR];
-//uint8_t screenbuffer_B[SAMPLES_COLOUR];
-//uint8_t backbuffer_B[SAMPLES_COLOUR];
 
-//uint8_t backbuffer_B[SAMPLES_COLOUR];
-
-// the colour carrier
-int32_t __attribute__((__aligned__(4))) SIN3[24];
-
-
-void cp_dma_handler();
 
 // note this does psuedo-progressive, which displays the same lines every field
 class ColourPal {
@@ -79,12 +70,14 @@ class ColourPal {
         uint8_t line1_B[SAMPLES_COLOUR];
         uint8_t line3_B[SAMPLES_COLOUR];
         uint8_t line4_B[SAMPLES_COLOUR];
-        // each line is setup to be an A part and B part so that the colour data is < 4096 bytes and can be fit
+        // each PAL line is setup to be an A part and B part so that the colour data is < 4096 bytes and can be fit
         // within SRAM banks 5 and 6 (scratch x and y) to avoid contention with writing to one while the other
         // is read by the DMA... maybe...
 
         // for colour
-        const float COLOUR_CARRIER = 4433618.75; // this needs to divide in some fashion into the DAC_FREQ
+        const float COLOUR_CARRIER = 4433618.75; // this ideally needs to divide in some fashion into the DAC_FREQ
+        // the pre-calculated colour carrier
+        int32_t __attribute__((__aligned__(4))) SIN3[24]; // aligned might not do anything here
         // the colour burst
         uint8_t burstOdd[SAMPLES_BURST]; // for odd lines
         uint8_t burstEven[SAMPLES_BURST]; // for even lines
@@ -128,34 +121,6 @@ class ColourPal {
                                   false // start immediately
             );
 
-            // DMA channel for colour data
-/*            dma_channel_B = dma_claim_unused_channel(true);
-            dma_channel_config channel_configB = dma_channel_get_default_config(dma_channel_B);
-
-            channel_config_set_transfer_data_size(&channel_configB, DMA_SIZE_32); // transfer 8 bits at a time
-            channel_config_set_read_increment(&channel_configB, true); // go down the buffer as it's read
-            channel_config_set_write_increment(&channel_configB, false); // always write the data to the same place
-            channel_config_set_dreq(&channel_configB, pio_get_dreq(pio, pio_sm, true));
-
-            dma_channel_configure(dma_channel_B,
-                                  &channel_configB,
-                                  &pio->txf[pio_sm], // write address
-                                  NULL, // read address
-                                  SAMPLES_COLOUR / 4, // number of data transfers to ( / 4 because 32-bit copies are faster)
-                                  false // start immediately
-            );
-
-            // when channel A has finished sendying the sync + porches, start channel B to send the data
-            channel_config_set_chain_to(&channel_configA, dma_channel_B);
-            channel_config_set_chain_to(&channel_configB, dma_channel_A); */
-
-//            dma_channel_set_irq0_enabled(dma_channel_B, true);
-//            irq_set_exclusive_handler(DMA_IRQ_0, cp_dma_handler);
-//            irq_set_enabled(DMA_IRQ_0, true);
-
-
-
-
             // pre-calculate all the lines that don't change depending on what's being shown
             resetLines();
             // pre-calculate colour burst (includes convserion to DAC voltages)
@@ -163,16 +128,22 @@ class ColourPal {
             // default simple test pattern
             createColourBars();
 
-            // buffers by default show nothing
+            // repeating section of colour carrier
+            // this would be 15, but is longer for the COS to be within the SIN as well
+            for (uint32_t i = 0; i < 24; i++) {
+                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
+                SIN3[i] = levelWhite*sinf(x); 
+            }
+
+            // initialise front buffer
             memset(screenbuffer_B, levelBlank, SAMPLES_COLOUR);
-//            memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
 
             // display a test card by default
-            this->setBuf(test_card_f);
+//            this->setBuf(test_card_f);
         }
 
         void resetLines() {
-            // calculate the repeating syncs
+            // calculate the sync signals that are used repeatedly
 
             // sync is lower, blank is in the middle
             memset(line1_A, levelBlank, SAMPLES_SYNC_PORCHES);
@@ -201,6 +172,7 @@ class ColourPal {
         }
 
         void populateBurst() {
+            // put the colour burst in the sync data of the lines that need it
             for (uint32_t i = 0; i < SAMPLES_BURST; i++) {
                 // the + here is a really fine adjustment on the carrier?
                 float x = float(i-6.5) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
@@ -253,270 +225,176 @@ class ColourPal {
             buf = in;
         }
 
-//            uint8_t backbuffer_B[SAMPLES_COLOUR];
-//int32_t dmavfactor;
 
-inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backbuffer_B, uint32_t startpixel, uint32_t endpixel ) {
-//void __time_critical_func(writepixels)(uint32_t startpixel, uint32_t endpixel ) {
+        void start() {
+            loop();
+        }
 
+        inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backbuffer_B, uint32_t startpixel, uint32_t endpixel ) {
 
-                    int32_t y = 0, u = 0, v = 0;
+            // current colour being processed
+            int32_t y = 0, u = 0, v = 0;
 
-                    // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is divided by 2
-                    uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION + startpixel;
-                    uint32_t dmai2;
+            // pointer to the buffer data we're displaying
+            // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is divided by 2
+            uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION + startpixel;
+            uint32_t dmai2; // position in line
 
-                    int32_t *SIN3p;
-                    int32_t *COS3p;
+            // pointer to colour carrier 
+            int32_t *SIN3p;
+            int32_t *COS3p;
 
-                    uint8_t yuv;
+            for (uint32_t i = startpixel*(SAMPLES_PER_PIXEL-1); i < ((SAMPLES_PER_PIXEL-1)*endpixel); i += SAMPLES_PER_PIXEL-1) {
+                // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
+                // make y, u, v out of 127
+                y = ((*idx >> 1) & 0b01100000) + levelBlank; // would multiply by levelWhite, then divide by 128, so do nothing and leave it be
+                u = (((*idx >> 3) & 7) - 3) << 5;
+                v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
 
-//            memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
-//                    for (uint32_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
-                    for (uint32_t i = startpixel*(SAMPLES_PER_PIXEL-1); i < ((SAMPLES_PER_PIXEL-1)*endpixel); i += SAMPLES_PER_PIXEL-1) { // for timing tests
-//                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*45); i += SAMPLES_PER_PIXEL-1) {
-//                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*59); i += SAMPLES_PER_PIXEL-1) {
-                        // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
+                // for each pixel back to the start of the colour carrier
+                SIN3p = &SIN3[0];
+                COS3p = &SIN3[9];
 
-                      // make y, u, v out of 127
-                        y = ((*idx >> 1) & 0b01100000) + levelBlank; // would multiply by levelWhite, then divide by 128, so do nothing and leave it be
-                         u = (((*idx >> 3) & 7) - 3) << 5;
-                         v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
+                for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) {
+                    // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
+                    // original equation: levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
+                    backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
+                }
+            }
+        }
 
-
-                        SIN3p = &SIN3[0];
-                        COS3p = &SIN3[9];
-
-                        for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) { // SAMPLES_PER_PIXEL
-                            // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
-//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
-//                            backbuffer_B[dmai2] = levelBlank + (y + u * SIN3[dmai2-i] + v * SIN3[dmai2-i+9]) / 128;
-//                            backbuffer_B[dmai2] = levelBlank + ((y + u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
-//                            backbuffer_B[dmai2] = y + (( u * SIN3[dmai2-i] + v * SIN3[dmai2-i+9]) >> 7) & 0xFF;
-                            backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
-                        }
-                    } // samples per pixel
-
-
-}
-
-
-
-
-
-        void __time_critical_func(dmaHandler)() {
+        void __time_critical_func(loop)() {
+            // declare the backbuffer locally so it hopefully ends up in the best memory bank...
             uint8_t backbuffer_B[SAMPLES_COLOUR];
             memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
 
+            while (true) { // could set this to a bool running; so that we can stop?
+                int32_t dmavfactor = 0; // multiply v by +1 or -1 depending on even or odd line
 
-	// the carrier calculation
-	// it might not need to be here...
-	for (uint32_t i = 0; i < 24; i++) {
-            float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
-            SIN3[i] = levelWhite*sinf(x); 
-        }
-
-
-while (true) {
-            int32_t dmavfactor;
-            switch (currentline) {
-                case 1 ... 2:
-                    dma_channel_set_read_addr(dma_channel_A, line1_A, true);
-                    dma_channel_wait_for_finish_blocking(dma_channel_A);
-                    dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-//                    dma_channel_set_read_addr(dma_channel_B, line1_B, false);
-                    dma_channel_set_read_addr(dma_channel_A, line1_B, true);
-                    break;
-                case 3:
-                    dma_channel_set_read_addr(dma_channel_A, line1_A, true); // lines 1 and 3 start the same way
-                    dma_channel_wait_for_finish_blocking(dma_channel_A);
-                    dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-//                    dma_channel_set_read_addr(dma_channel_B, line3_B, false);
-                    dma_channel_set_read_addr(dma_channel_A, line3_B, true);
-                    break;
-                case 4 ... 5:
-                    dma_channel_set_read_addr(dma_channel_A, line4_A, true);
-                    dma_channel_wait_for_finish_blocking(dma_channel_A);
-                    dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-//                    dma_channel_set_read_addr(dma_channel_B, line4_B, false);
-                    dma_channel_set_read_addr(dma_channel_A, line4_B, true);
-                    break;
-                case 6 ... YDATA_START-1:
-                    if (currentline & 1) { // odd
-                        dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
+                switch (currentline) {
+                    case 1 ... 2:
+                        dma_channel_set_read_addr(dma_channel_A, line1_A, true);
                         dma_channel_wait_for_finish_blocking(dma_channel_A);
                         dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-//                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
-                        dma_channel_set_read_addr(dma_channel_A, line6_B, true);
-                    }
-                    else {
-                        dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
+                        dma_channel_set_read_addr(dma_channel_A, line1_B, true);
+                        break;
+
+                    case 3:
+                        dma_channel_set_read_addr(dma_channel_A, line1_A, true); // lines 1 and 3 start the same way
                         dma_channel_wait_for_finish_blocking(dma_channel_A);
                         dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-//                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
-                        dma_channel_set_read_addr(dma_channel_A, line6_B, true);
-                    }
-                    break;
-                case YDATA_START ... YDATA_END: // in the absence of anything else, empty lines
-                    if (currentline & 1) { // odd
-                        dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
-//                        dma_channel_wait_for_finish_blocking(dma_channel_A);
-//                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-//                        dma_channel_set_read_addr(dma_channel_B, bufferOdd_B, false);
-//                        dma_channel_set_read_addr(dma_channel_A, bufferOdd_B, true);
-                        dmavfactor = 1; // next up is even
-                    }
-                    else {
-                        dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
-//                        dma_channel_wait_for_finish_blocking(dma_channel_A);
-//                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-//                        dma_channel_set_read_addr(dma_channel_B, bufferEven_B, false);
-//                        dma_channel_set_read_addr(dma_channel_A, bufferEven_B, true);
-                        dmavfactor = -1; // next up is odd
-                    }
+                        dma_channel_set_read_addr(dma_channel_A, line3_B, true);
+                        break;
 
-//mutex_enter_blocking(&mx1);
-                    dmacpy(screenbuffer_B, backbuffer_B, SAMPLES_COLOUR); // 3.2 us
-//                    mutex_exit(&mx1);
-
-                    // compute a few lines here while we wait
-                if (buf != NULL) {
-//gpio_put(26, 1);
-writepixels(dmavfactor, backbuffer_B, 0, 24); // 20 us
-//writepixels(0, 20); // 20 us
-//gpio_put(26, 0);
-}
-                    dma_channel_wait_for_finish_blocking(dma_channel_A); // 24 us
-
-                    dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-                    dma_channel_set_read_addr(dma_channel_A, screenbuffer_B, true);
-
-                    break;
-                case YDATA_END+1 ...309:
-                    if (currentline & 1) { // odd
-                        dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
+                    case 4 ... 5:
+                        dma_channel_set_read_addr(dma_channel_A, line4_A, true);
                         dma_channel_wait_for_finish_blocking(dma_channel_A);
                         dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-//                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
-                        dma_channel_set_read_addr(dma_channel_A, line6_B, true);
-                    }
-                    else {
-                        dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
+                        dma_channel_set_read_addr(dma_channel_A, line4_B, true);
+                        break;
+
+                    case 6 ... YDATA_START-1:
+                        if (currentline & 1) { // odd
+                            dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
+                            dma_channel_wait_for_finish_blocking(dma_channel_A);
+                            dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                            dma_channel_set_read_addr(dma_channel_A, line6_B, true);
+                        }
+                        else {
+                            dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
+                            dma_channel_wait_for_finish_blocking(dma_channel_A);
+                            dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                            dma_channel_set_read_addr(dma_channel_A, line6_B, true);
+                        }
+                        break;
+
+                    case YDATA_START ... YDATA_END: // in the absence of anything else, empty lines
+                        if (currentline & 1) { // odd
+                            dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
+                            dmavfactor = 1; // next up is even
+                        }
+                        else {
+                            dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
+                            dmavfactor = -1; // next up is odd
+                        }
+
+                        // copy the back to front buffer for the upcoming line
+                        dmacpy(screenbuffer_B, backbuffer_B, SAMPLES_COLOUR); // 3.2 us
+
+                        // if there's a buffer to show, compute a few lines here while we wait
+                        if (buf != NULL) {
+//                            gpio_put(26, 1);
+                            writepixels(dmavfactor, backbuffer_B, 0, 24); // 20 us
+//                            gpio_put(26, 0);
+                        }
+
+                        dma_channel_wait_for_finish_blocking(dma_channel_A); // 24 us
+                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                        dma_channel_set_read_addr(dma_channel_A, screenbuffer_B, true);
+
+                        break;
+
+                    case YDATA_END+1 ...309:
+                        if (currentline & 1) { // odd
+                            dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
+                            dma_channel_wait_for_finish_blocking(dma_channel_A);
+                            dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                            dma_channel_set_read_addr(dma_channel_A, line6_B, true);
+                        }
+                        else {
+                            dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
+                            dma_channel_wait_for_finish_blocking(dma_channel_A);
+                            dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                            dma_channel_set_read_addr(dma_channel_A, line6_B, true);
+                        }
+                        break;
+
+                    case 310 ... 312:
+                        dma_channel_set_read_addr(dma_channel_A, line4_A, true);
                         dma_channel_wait_for_finish_blocking(dma_channel_A);
                         dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-//                        dma_channel_set_read_addr(dma_channel_B, line6_B, false);
-                        dma_channel_set_read_addr(dma_channel_A, line6_B, true);
-                    }
-                    break;
-                case 310 ... 312:
-                    dma_channel_set_read_addr(dma_channel_A, line4_A, true);
-                    dma_channel_wait_for_finish_blocking(dma_channel_A);
-                    dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-//                    dma_channel_set_read_addr(dma_channel_B, line4_B, false);
-                    dma_channel_set_read_addr(dma_channel_A, line4_B, true);
-                    break;
-                default:
-                    break;
-            }
+                        dma_channel_set_read_addr(dma_channel_A, line4_B, true);
+                        break;
 
-            if (currentline >= YDATA_START - 1 && currentline < YDATA_END) {
+                    default:
+                        // should never get here
+                        break;
+                }
 
-                if (buf == NULL) {
-                    if (currentline & 1) { // odd, next line is even
-                        dmacpy(backbuffer_B, colourbarsEven_B, SAMPLES_COLOUR);
+                // next up is a picture line, we know this if dmvfactor is -1 or 1
+                // otherwise based on line number
+                if (dmavfactor != 0 || (currentline >= YDATA_START - 1 && currentline < YDATA_END)) {
+
+                    if (buf == NULL) {
+                        // no buffer set so show colour bars instead
+                        if (currentline & 1) { // odd, next line is even
+                            dmacpy(backbuffer_B, colourbarsEven_B, SAMPLES_COLOUR);
+                        }
+                        else {
+                            dmacpy(backbuffer_B, colourbarsOdd_B, SAMPLES_COLOUR);
+                        }
                     }
                     else {
-                        dmacpy(backbuffer_B, colourbarsOdd_B, SAMPLES_COLOUR);
+                        // calculate data to show
+                        writepixels(dmavfactor, backbuffer_B, 24, 24+50); // 40 us
                     }
                 }
-                else {
 
-//gpio_put(26, 1);
-writepixels(dmavfactor, backbuffer_B, 24, 24+50); // 40
-//writepixels(24, 24+40); // 40
-//gpio_put(26, 0);
-
-//writepixels(dmavfactor, backbuffer_B);
-
-/*                    int32_t y = 0, u = 0, v = 0;
-
-                    // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is divided by 2
-                    uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
-                    uint32_t dmai2;
-
-                    int32_t *SIN3p;
-                    int32_t *COS3p;
-
-//            memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
-//                    for (uint32_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
-                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*39); i += SAMPLES_PER_PIXEL-1) { // for timing tests
-//                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*45); i += SAMPLES_PER_PIXEL-1) {
-//                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*59); i += SAMPLES_PER_PIXEL-1) {
-                        // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
-                      // make y, u, v out of 127
-////                        y = ((*idx >> 1) & 0b01100000);
-                        y = ((*idx >> 1) & 0b01100000) + levelBlank;
-////                        y = levelWhite * ((*idx >> 1) & 0b01100000);
-////                      y = ((*idx << 6) & 0b11000000000000); // assuming levelWhite approx. equals 128
-                        u = (((*idx >> 3) & 7) - 3) << 5;
-////                        v = (((*(idx++) & 7) - 3) << 5);
-                        v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
-
-                        SIN3p = &SIN3[0];
-                        COS3p = &SIN3[9];
-
-                        for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) { // SAMPLES_PER_PIXEL
-                            // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
-//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
-//                            backbuffer_B[dmai2] = levelBlank + (y + u * SIN3[dmai2-i] + v * SIN3[dmai2-i+9]) / 128;
-//                            backbuffer_B[dmai2] = levelBlank + ((y + u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
-//                            backbuffer_B[dmai2] = y + (( u * SIN3[dmai2-i] + v * SIN3[dmai2-i+9]) >> 7) & 0xFF;
-                            backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
-                        }
-                    } // samples per pixel */
-
-//gpio_put(26, 0);
-
-                } // buf != null
-
-            } // ydata lines
+                // only continue to the beginning of the loop and restart A after B is finished
+                dma_channel_wait_for_finish_blocking(dma_channel_A);
+                dma_channel_set_trans_count(dma_channel_A, SAMPLES_SYNC_PORCHES / 4, false);
 
 
-            // only continue to the beginning of the loop and restart A after B is finished
-            dma_channel_wait_for_finish_blocking(dma_channel_A);
-            dma_channel_set_trans_count(dma_channel_A, SAMPLES_SYNC_PORCHES / 4, false);
-//            dma_channel_wait_for_finish_blocking(dma_channel_B);
+                gpio_put(18, led = !led); // this really should be flickering more? 
+
+                currentline++;
+                if (currentline == 313) {
+                    currentline = 1;
+                }
+
+            } // while (true)
+        } // loop
 
 
-            gpio_put(18, led = !led); // not flashing as it should be?
+}; // end class
 
-            currentline++;
-            if (currentline == 313) {
-                currentline = 1;
-            }
-
-} // while (true)
-
-
-            // prepare data for next line? raise semaphore for it?
-//            dma_hw->ints0 = 1u << dma_channel_A;
-// dma_channel_acknowledge_irq0(dma_channel_A)?
-        }
-
-        void start() {
-//            dma_channel_set_read_addr(dma_channel_A, line1_A, true); // everything is set, start!
-//dma_channel_wait_for_finish_blocking(dma_channel_A);
-//            dma_channel_set_read_addr(dma_channel_A, line1_B, true);
-//            dma_channel_set_read_addr(dma_channel_B, line1_B, false); // this will be started by the chain from A
-//            currentline++; // onto line 2!
-//dma_channel_wait_for_finish_blocking(dma_channel_A);
-dmaHandler();
-        }
-
-};
-
-//ColourPal cp;
-
-//void cp_dma_handler() {
-//    cp.dmaHandler();
-//}

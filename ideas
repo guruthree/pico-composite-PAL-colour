@@ -1,26 +1,18 @@
-it seems like the SIN[] and COS[] array access is what's killing the speed?
+it seems like array access is what's killing speed
 
+slightly faster to read from RAM x3 than to do the bit shifts for yuv? (10%)
+so store in yuv? 
+84x125 anamorphic
+effective & actual xresolution?
 
-15 pixels for the looping of the carrier, seems like working from the shorter array is marginally faster
 
 
 30 samples/pixel?
 use dma to copy the 15 repeating pattern?
 
 
-sin wave already in backbuffer, then +=?
 
-
-
-
-
-2 bits each for y/u/v isn't brilliant
-
-
-
-somework on one core some work on the other?
-iterrupt/signal to the other core?
-
+while loop?
 
 
 test with regular pico and same DAC
@@ -30,20 +22,7 @@ test with pico in regular vga board DAC
 
 =====
 
-optimisation thoughts/ideas:
-
-while loop?
-
-backbuffer as a function
-template it with index
-inline it
-
-then it should be 
-
-macro
-
-rearrange loop order?
-
+some recorded timings...
 
 for 39 loops:
 explicit: 54 us
@@ -65,10 +44,3 @@ y=u=v=currentline: 4.2us
 24 us doing the porches
 3.2 us of that is the dma copy
 
-
-
-
-slightly faster to read from RAM x3 than to do the bit shifts for yuv? (10%)
-so store in yuv? 
-125x83 then line double? (84?)
-	effective & actual xresolution?

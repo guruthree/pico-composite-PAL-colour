@@ -12,15 +12,10 @@
 #include "dac.pio.h"
 
 #define CLOCK_SPEED 266e6
-#define CLOCK_DIV 3.99974249778092305618
-//#define CLOCK_DIV 7.49951718333923089688
-//#define CLOCK_SPEED 250e6
-//#define CLOCK_DIV 2.2555
-//#define CLOCK_SPEED 200e6
-//#define CLOCK_DIV 7.51831296575361474055
+#define CLOCK_DIV 3.99974249778092305618 // clock divided by carrier divided by 15
 #define DAC_FREQ (CLOCK_SPEED / CLOCK_DIV) // this should be
 
-
+// fast copies of uint8_t arrays, array length needs to be multiple of 4
 int dma_chan32;
 inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
     dma_channel_set_trans_count(dma_chan32, size / 4, false);
@@ -31,11 +26,7 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
     dma_channel_set_write_addr(dma_chan32, NULL, false);
 }
 
-//mutex_t mx1;
-
 #include "colourpal.h"
-
-//    ColourPal cp;
 
 void core1_entry();
 
@@ -60,11 +51,12 @@ int main() {
     sleep_ms(1000);
     gpio_put(20, 1); // B
 
+    // a pin out to use to check timings
+//    gpio_init(26); // Tiny2040 A0
+//    gpio_set_dir(26, GPIO_OUT);
+//    gpio_put(26, 0);
 
-    gpio_init(26); // A0
-    gpio_set_dir(26, GPIO_OUT);
-    gpio_put(26, 0);
-
+    // setup dma for dmacopy (faster than memcpy)
     dma_chan32 = dma_claim_unused_channel(true);
     dma_channel_config channel_config32 = dma_channel_get_default_config(dma_chan32);
 
@@ -80,39 +72,26 @@ int main() {
                           false // start immediately
     );
 
-//   mutex_init(&mx1);
-
 
     multicore_launch_core1(core1_entry);
 
-//    cp.init();
-//    cp.start();
-
-//    while (1) { tight_loop_contents(); } // need this for USB!
-
-uint32_t i = 0;
     while (1) {
-/*       if (mutex_enter_timeout_us(&mx1, 2)) {
-           gpio_put(26,1);
-           cp.writepixels(90,90+1);
-           gpio_put(26,0);
-           mutex_exit(&mx1);
-       } */
 
-    test_card_f[i] = 0;
-    i++;
-    sleep_ms(10);
-
+        // do something cool here
+        tight_loop_contents();
 
     }
 }
 
+// do all composite processing on the second core
 void core1_entry() {
 
     ColourPal cp;
     cp.init();
+    cp.setBuf(test_card_f);
     cp.start();
 
+    // should never get here, cp.start() should loop
     while (1) {
         tight_loop_contents();
     }

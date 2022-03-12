@@ -11,6 +11,7 @@
 
 // it was supposed to max out at 1, scope seams to say 1.25, so 1.35 for some margin
 // luckily the TV doesn't seem to be susper sensitive to exact voltage
+// the white voltage level should be around 128 to allow some code optimisations!!!
 #define DIVISIONS_PER_VOLT (255/1.35)
 
 #define PIN_COUNT 8
