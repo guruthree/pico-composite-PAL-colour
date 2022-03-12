@@ -403,6 +403,7 @@ while (true) {
                     uint32_t dmai2;
 
     gpio_put(26, 1);
+//            memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
 //                    for (uint32_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
                     for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*39); i += SAMPLES_PER_PIXEL-1) { // for timing tests
 //                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*45); i += SAMPLES_PER_PIXEL-1) {
@@ -410,8 +411,9 @@ while (true) {
                         // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
                       // make y, u, v out of 127
 //                        y = ((*idx >> 1) & 0b01100000);
+                        y = ((*idx >> 1) & 0b01100000) + levelBlank;
 //                        y = levelWhite * ((*idx >> 1) & 0b01100000);
-                        y = ((*idx << 6) & 0b11000000000000); // assuming levelWhite approx. equals 128
+//                      y = ((*idx << 6) & 0b11000000000000); // assuming levelWhite approx. equals 128
                         u = (((*idx >> 3) & 7) - 3) << 5;
 //                        v = (((*(idx++) & 7) - 3) << 5);
                         v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
@@ -466,7 +468,13 @@ while (true) {
 //                            backbuffer_B[dmai2] = levelBlank + (y + u * (*SIN3p) + v * (*COS3p)) / 128;
 //                            backbuffer_B[dmai2] = levelBlank + (y + u * (*(SIN3p++)) + v * (*(COS3p++))) / 128;
 //                            backbuffer_B[dmai2] = levelBlank + ((y + u * (*(SIN3p++)) + v * (*(COS3p++))) & 0x7FFFFFFF) >> 7;
-                            backbuffer_B[dmai2] = levelBlank + ((y + u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
+
+
+//                            backbuffer_B[dmai2] = levelBlank + ((y + u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
+                            backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
+
+
+
 //                            backbuffer_B[dmai2] = levelBlank + (levelWhite*(y + u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
 //			    SIN3p++;// += sizeof(int32_t);
 //			    COS3p++;// += sizeof(int32_t);
