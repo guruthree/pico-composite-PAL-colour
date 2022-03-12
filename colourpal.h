@@ -391,19 +391,32 @@ while (true) {
                     uint32_t dmai2;
 
 //                    for (uint32_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
-                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*38); i += SAMPLES_PER_PIXEL-1) {
+                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*10); i += SAMPLES_PER_PIXEL-1) {
 //                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*59); i += SAMPLES_PER_PIXEL-1) {
                         // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
-                        // make y, u, v out of 127
-                        y = (*idx >> 1) & 0b01100000;
+                      // make y, u, v out of 127
+//                        y = ((*idx >> 1) & 0b01100000);
+                        y = levelWhite * ((*idx >> 1) & 0b01100000);
                         u = (((*idx >> 3) & 7) - 3) << 5;
-                        v = ((*(idx++) & 7) - 3) << 5;
+//                        v = (((*(idx++) & 7) - 3) << 5);
+                        v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
+
+			int32_t *SIN3p = &SIN3[0];
+			int32_t *COS3p = &COS3[0];
 
                         for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) { // SAMPLES_PER_PIXEL
                             // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
 //                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * COS3[dmai2-i]) / 128;
+//                            backbuffer_B[dmai2] = levelBlank + (y + u * SIN3[dmai2-i] + v * COS3[dmai2-i]) / 128;
 
-                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
+			int32_t *SIN3p = &SIN3[dmai2-i];
+			int32_t *COS3p = &COS3[dmai2-i];
+//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * (*SIN3p) + dmavfactor * v * (*COS3p)) / 128;
+                            backbuffer_B[dmai2] = levelBlank + (y + u * (*SIN3p) + v * (*COS3p)) / 128;
+//			    SIN3p += sizeof(int32_t);
+			    COS3p += sizeof(int32_t);
+
+//                            backbuffer_B[dmai2] = levelBlank + (y + u * SIN3[dmai2-i] + v * SIN3[dmai2-i+9]) / 128;
 
 //                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * currentline) / 128;
 
