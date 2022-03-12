@@ -10,6 +10,9 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstack-usage")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstack-usage")
+
 add_executable(pio-DAC
     pio-DAC.cpp
 )
@@ -23,6 +26,8 @@ target_link_libraries(pio-DAC
     pico_multicore
     hardware_pio
     hardware_dma
+    pico_malloc
+	pico_mem_ops
 )
 pico_add_extra_outputs(pio-DAC)
 

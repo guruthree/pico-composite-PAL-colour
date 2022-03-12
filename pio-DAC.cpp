@@ -6,11 +6,13 @@
 #include "dac.pio.h"
 
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 void core1_entry();
 
 int main() {
-    stdio_init_all();
+//    stdio_init_all();
     set_sys_clock_khz(200000, true); // 160 MHz
 
     gpio_init(18);
@@ -24,7 +26,7 @@ int main() {
     gpio_put(20, 1); // B
 
     gpio_put(20, 0); // B
-    sleep_ms(3000);
+    sleep_ms(1000);
     gpio_put(20, 1); // B
 
     float DACfreq = 20000000; // keep a nice ratio of system clock?
@@ -89,7 +91,8 @@ int main() {
         line313[i] = levelSync;
         line318[i] = levelBlank;
         line623[i] = levelBlank;
-        aline[i] = levelWhite; // white except for horizontal sync
+//        aline[i] = levelWhite; // white except for horizontal sync
+        aline[i] = levelBlank; // white except for horizontal sync
     }
 
 // might need to remove -1/add+1 to adjust timing?
@@ -132,6 +135,16 @@ int main() {
     for (i = samplesLine-samplesFrontPorch; i < samplesLine; i++) { // front porch
         aline[i] = levelBlank;
     }
+//    for (i = samplesHsync+samplesBackPorch; i < samplesLine-samplesFrontPorch; i++) { // back porch
+//        aline[i] = levelBlank+i/8;
+//    }
+    // effective 'resolution' 999x260, but vertical distinction, it's more like 333x250
+    for (i = 230; i < 230+999; i+=9) {
+//        aline[i] = levelBlank;
+        aline[i] = levelWhite;
+        aline[i+1] = levelWhite;
+        aline[i+2] = levelWhite;
+    }
 
     uint8_t* alllines[625+1];
     alllines[1] = line1;
@@ -163,13 +176,13 @@ int main() {
     alllines[624] = line4;
     alllines[625] = line4;
 
-    for (i = 100; i < 200; i++) {
+    for (i = 40; i < 300; i+=1) {
         alllines[i] = aline; // both fields
-        alllines[i+313] = aline;
+        alllines[i+312] = aline;
     }
 
 
-        printf("%i\n", samplesLine);
+//        printf("%i\n", samplesLine);
 
 
 //    multicore_launch_core1(core1_entry);
