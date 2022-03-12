@@ -45,6 +45,7 @@ uint8_t __scratch_y("screenbuffer") screenbuffer_B[SAMPLES_COLOUR];
 //uint8_t screenbuffer_B[SAMPLES_COLOUR];
 //uint8_t backbuffer_B[SAMPLES_COLOUR];
 
+//uint8_t backbuffer_B[SAMPLES_COLOUR];
 
 // the colour carrier
 int32_t __attribute__((__aligned__(4))) SIN3[24];
@@ -252,9 +253,11 @@ class ColourPal {
             buf = in;
         }
 
+            uint8_t backbuffer_B[SAMPLES_COLOUR];
+int32_t dmavfactor;
 
-
-inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backbuffer_B, uint32_t startpixel, uint32_t endpixel ) {
+//inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backbuffer_B, uint32_t startpixel, uint32_t endpixel ) {
+void __time_critical_func(writepixels)(uint32_t startpixel, uint32_t endpixel ) {
 
 
                     int32_t y = 0, u = 0, v = 0;
@@ -274,20 +277,12 @@ inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backb
 //                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*45); i += SAMPLES_PER_PIXEL-1) {
 //                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*59); i += SAMPLES_PER_PIXEL-1) {
                         // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
-//                        yuv = *(idx++);
-                        
-                      // make y, u, v out of 127
-////                        y = ((*idx >> 1) & 0b01100000);
-//                        y = ((yuv >> 1) & 0b01100000) + levelBlank;
-////                        y = levelWhite * ((*idx >> 1) & 0b01100000);
-////                      y = ((*idx << 6) & 0b11000000000000); // assuming levelWhite approx. equals 128
-//                        u = (((yuv >> 3) & 7) - 3) << 5;
-///                        v = (((*(idx++) & 7) - 3) << 5);
-//                        v = dmavfactor * (((yuv & 7) - 3) << 5);
 
-                        y = *(idx++);
-                        u = *(idx++);
-                        v = *(idx++);
+                      // make y, u, v out of 127
+                        y = ((*idx >> 1) & 0b01100000) + levelBlank; // would multiply by levelWhite, then divide by 128, so do nothing and leave it be
+                         u = (((*idx >> 3) & 7) - 3) << 5;
+                         v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
+
 
                         SIN3p = &SIN3[0];
                         COS3p = &SIN3[9];
@@ -310,7 +305,7 @@ inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backb
 
 
         void __time_critical_func(dmaHandler)() {
-            uint8_t backbuffer_B[SAMPLES_COLOUR];
+//            uint8_t backbuffer_B[SAMPLES_COLOUR];
             memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
 
 
@@ -323,7 +318,7 @@ inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backb
 
 
 while (true) {
-            int32_t dmavfactor;
+//            int32_t dmavfactor;
             switch (currentline) {
                 case 1 ... 2:
                     dma_channel_set_read_addr(dma_channel_A, line1_A, true);
@@ -380,12 +375,17 @@ while (true) {
                         dmavfactor = -1; // next up is odd
                     }
 
+mutex_enter_blocking(&mx1);
                     dmacpy(screenbuffer_B, backbuffer_B, SAMPLES_COLOUR); // 3.2 us
+                    mutex_exit(&mx1);
 
                     // compute a few lines here while we wait
-gpio_put(26, 1);
-writepixels(dmavfactor, backbuffer_B, 0, 24); // 20 us
-gpio_put(26, 0);
+                if (buf != NULL) {
+//gpio_put(26, 1);
+//writepixels(dmavfactor, backbuffer_B, 0, 24); // 20 us
+writepixels(0, 20); // 20 us
+//gpio_put(26, 0);
+}
                     dma_channel_wait_for_finish_blocking(dma_channel_A); // 24 us
 
                     dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
@@ -431,9 +431,10 @@ gpio_put(26, 0);
                 }
                 else {
 
-gpio_put(26, 1);
-writepixels(dmavfactor, backbuffer_B, 24, 24+50); // 40
-gpio_put(26, 0);
+//gpio_put(26, 1);
+//writepixels(dmavfactor, backbuffer_B, 24, 24+50); // 40
+writepixels(24, 24+40); // 40
+//gpio_put(26, 0);
 
 //writepixels(dmavfactor, backbuffer_B);
 
