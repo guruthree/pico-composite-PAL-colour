@@ -266,20 +266,28 @@ inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backb
                     int32_t *SIN3p;
                     int32_t *COS3p;
 
+                    uint8_t yuv;
+
 //            memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
 //                    for (uint32_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
                     for (uint32_t i = startpixel*(SAMPLES_PER_PIXEL-1); i < ((SAMPLES_PER_PIXEL-1)*endpixel); i += SAMPLES_PER_PIXEL-1) { // for timing tests
 //                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*45); i += SAMPLES_PER_PIXEL-1) {
 //                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*59); i += SAMPLES_PER_PIXEL-1) {
                         // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
+//                        yuv = *(idx++);
+                        
                       // make y, u, v out of 127
 ////                        y = ((*idx >> 1) & 0b01100000);
-                        y = ((*idx >> 1) & 0b01100000) + levelBlank;
+//                        y = ((yuv >> 1) & 0b01100000) + levelBlank;
 ////                        y = levelWhite * ((*idx >> 1) & 0b01100000);
 ////                      y = ((*idx << 6) & 0b11000000000000); // assuming levelWhite approx. equals 128
-                        u = (((*idx >> 3) & 7) - 3) << 5;
-////                        v = (((*(idx++) & 7) - 3) << 5);
-                        v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
+//                        u = (((yuv >> 3) & 7) - 3) << 5;
+///                        v = (((*(idx++) & 7) - 3) << 5);
+//                        v = dmavfactor * (((yuv & 7) - 3) << 5);
+
+                        y = *(idx++);
+                        u = *(idx++);
+                        v = *(idx++);
 
                         SIN3p = &SIN3[0];
                         COS3p = &SIN3[9];
