@@ -1,8 +1,17 @@
-forget cycling for now, pick something from the middle that was roughly ok
+remove lines, just have a really long colour burst at a low freq
 
-instead play with the sin/cos stuff
+run at a low carrier frequency and use the picoscope
 
-what does it look like without the colour burst?
+try changing system clock and see if reproduced frequency changes
 
-is the phase of the wave correct?
+check if the rising (not -0.3 bit) of the composite signal has the correct length
+the 66 vs 64 us time difference could just be tacked onto the end while the code shuffles
+
+
+
+===
+
+it seems like a clock divider of 2 stretches things a bit
+and odd/prime number dividers cause the signal to be malformed
+
 

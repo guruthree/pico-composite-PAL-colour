@@ -66,7 +66,7 @@ int main() {
     syncVolts = -0.3;
     blankVolts = 0.0; 
     blackVolts =  0.0;
-    whiteVolts = 0.3; // any higher and integer wrapping on green since the DAC really should have been 0 to 1.25 volts
+    whiteVolts = 0.4; // any higher than 0.2 and integer wrapping on green since the DAC really should have been 0 to 1.25 volts
     levelSync = 0;
     levelBlank = levelConversion(uint8_t((blankVolts - syncVolts) * divpervolt + 0.5));
     levelBlack = levelConversion(uint8_t((blackVolts - syncVolts) * divpervolt + 0.5));
@@ -212,6 +212,13 @@ void populateBurst(double COS[], double SIN[], uint8_t burstOdd[], uint8_t burst
 
 bool active = false;
 
+// why are g and r flipped? who knwos...
+void rgb2yuv(double g, double r, double b, double &y, double &u, double &v) {
+    y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
+    u = 0.493 * (b - y);
+    v = 0.877 * (r - y);
+}
+
 void core1_entry() {
 
     double colourCarrier = 4433618.75;//*1.1692; // the exact 1.1692?
@@ -221,13 +228,6 @@ void core1_entry() {
 //    double colourCarrier = 5.18e6; // - OK with no loop and half line only
 //    double colourCarrier = 2e6;
 //    double colourCarrier = 1e5; // testing with picoscope
-
-    double r = 0.5; // g ?
-    double g = 1; // r ?
-    double b = 0;
-    double y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
-    double u = 0.493 * (b - y);
-    double v = 0.877 * (r - y);
 
     uint8_t bufferline[2][samplesLine];
 
@@ -334,12 +334,34 @@ void core1_entry() {
             populateBurst(COS, SIN, burstOdd, burstEven, line6odd, line6even, alineOdd, alineEven); // put colour burst in arrays
 
 //            for (i = samplesHsync+samplesBackPorch+(0.75*(DACfreq / 1000000)); i < halfLine; i++)
-            uint32_t ioff = samplesHsync+samplesBackPorch+(0.75*(DACfreq / 1000000));
-            for (i = ioff; i < samplesLine-samplesFrontPorch-(0.75*(DACfreq / 1000000)); i++) {
+            uint32_t ioff = samplesHsync+samplesBackPorch+(1*(DACfreq / 1000000));
+            uint32_t ioff2 = ioff - 5;
+            uint32_t irange = samplesLine-samplesFrontPorch-(1*(DACfreq / 1000000)) - ioff;
+            for (i = ioff; i < ioff + irange; i++) {
+
+
+                double y, u, v;
+                if ((i - ioff) < (irange / 8))
+                    rgb2yuv(1, 1, 1, y, u, v);
+                else if ((i - ioff) < (2 * irange / 8))
+                    rgb2yuv(0.75, 0.75, 0, y, u, v);
+                else if ((i - ioff) < (3 * irange / 8))
+                    rgb2yuv(0, 0.75, 0.75, y, u, v);
+                else if ((i - ioff) < (4 * irange / 8))
+                    rgb2yuv(0, 0.75, 0, y, u, v);
+                else if ((i - ioff) < (5 * irange / 8))
+                    rgb2yuv(0.75, 0, 0.75, y, u, v);
+                else if ((i - ioff) < (6 * irange / 8))
+                    rgb2yuv(0.75, 0, 0, y, u, v);
+                else if ((i - ioff) < (7 * irange / 8))
+                    rgb2yuv(0, 0, 0.75, y, u, v);
+                else
+                    rgb2yuv(0, 0, 0, y, u, v);
+
                 // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
-                alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i-ioff] + v * COS[i-ioff]));
+                alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i-ioff2] + v * COS[i-ioff2]));
                 // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
-                alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i-ioff] - v * COS[i-ioff]));
+                alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i-ioff2] - v * COS[i-ioff2]));
 
 
 
