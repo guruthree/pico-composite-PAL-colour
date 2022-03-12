@@ -253,11 +253,11 @@ class ColourPal {
             buf = in;
         }
 
-            uint8_t backbuffer_B[SAMPLES_COLOUR];
-int32_t dmavfactor;
+//            uint8_t backbuffer_B[SAMPLES_COLOUR];
+//int32_t dmavfactor;
 
-//inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backbuffer_B, uint32_t startpixel, uint32_t endpixel ) {
-void __time_critical_func(writepixels)(uint32_t startpixel, uint32_t endpixel ) {
+inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backbuffer_B, uint32_t startpixel, uint32_t endpixel ) {
+//void __time_critical_func(writepixels)(uint32_t startpixel, uint32_t endpixel ) {
 
 
                     int32_t y = 0, u = 0, v = 0;
@@ -305,7 +305,7 @@ void __time_critical_func(writepixels)(uint32_t startpixel, uint32_t endpixel ) 
 
 
         void __time_critical_func(dmaHandler)() {
-//            uint8_t backbuffer_B[SAMPLES_COLOUR];
+            uint8_t backbuffer_B[SAMPLES_COLOUR];
             memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
 
 
@@ -318,7 +318,7 @@ void __time_critical_func(writepixels)(uint32_t startpixel, uint32_t endpixel ) 
 
 
 while (true) {
-//            int32_t dmavfactor;
+            int32_t dmavfactor;
             switch (currentline) {
                 case 1 ... 2:
                     dma_channel_set_read_addr(dma_channel_A, line1_A, true);
@@ -375,15 +375,15 @@ while (true) {
                         dmavfactor = -1; // next up is odd
                     }
 
-mutex_enter_blocking(&mx1);
+//mutex_enter_blocking(&mx1);
                     dmacpy(screenbuffer_B, backbuffer_B, SAMPLES_COLOUR); // 3.2 us
-                    mutex_exit(&mx1);
+//                    mutex_exit(&mx1);
 
                     // compute a few lines here while we wait
                 if (buf != NULL) {
 //gpio_put(26, 1);
-//writepixels(dmavfactor, backbuffer_B, 0, 24); // 20 us
-writepixels(0, 20); // 20 us
+writepixels(dmavfactor, backbuffer_B, 0, 24); // 20 us
+//writepixels(0, 20); // 20 us
 //gpio_put(26, 0);
 }
                     dma_channel_wait_for_finish_blocking(dma_channel_A); // 24 us
@@ -432,8 +432,8 @@ writepixels(0, 20); // 20 us
                 else {
 
 //gpio_put(26, 1);
-//writepixels(dmavfactor, backbuffer_B, 24, 24+50); // 40
-writepixels(24, 24+40); // 40
+writepixels(dmavfactor, backbuffer_B, 24, 24+50); // 40
+//writepixels(24, 24+40); // 40
 //gpio_put(26, 0);
 
 //writepixels(dmavfactor, backbuffer_B);

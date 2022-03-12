@@ -31,11 +31,11 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
     dma_channel_set_write_addr(dma_chan32, NULL, false);
 }
 
-mutex_t mx1;
+//mutex_t mx1;
 
 #include "colourpal.h"
 
-    ColourPal cp;
+//    ColourPal cp;
 
 void core1_entry();
 
@@ -80,7 +80,7 @@ int main() {
                           false // start immediately
     );
 
-   mutex_init(&mx1);
+//   mutex_init(&mx1);
 
 
     multicore_launch_core1(core1_entry);
@@ -90,19 +90,26 @@ int main() {
 
 //    while (1) { tight_loop_contents(); } // need this for USB!
 
+uint32_t i = 0;
     while (1) {
-       if (mutex_enter_timeout_us(&mx1, 2)) {
+/*       if (mutex_enter_timeout_us(&mx1, 2)) {
            gpio_put(26,1);
            cp.writepixels(90,90+1);
            gpio_put(26,0);
            mutex_exit(&mx1);
-       }
+       } */
+
+    test_card_f[i] = 0;
+    i++;
+    sleep_ms(10);
+
+
     }
 }
 
 void core1_entry() {
 
-//    ColourPal cp;
+    ColourPal cp;
     cp.init();
     cp.start();
 

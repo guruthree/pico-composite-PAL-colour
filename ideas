@@ -1,9 +1,4 @@
-explicitly write out inner loop
-a bunch of individual ints for the sin/cos?
-
-
-how much time does the calculation really take?
-    it seems like the SIN[] and COS[] array access is what's killing the speed?
+it seems like the SIN[] and COS[] array access is what's killing the speed?
 
 
 15 pixels for the looping of the carrier, seems like working from the shorter array is marginally faster
@@ -32,3 +27,48 @@ test with regular pico and same DAC
 test with pico in regular vga board DAC
 
 
+
+=====
+
+optimisation thoughts/ideas:
+
+while loop?
+
+backbuffer as a function
+template it with index
+inline it
+
+then it should be 
+
+macro
+
+rearrange loop order?
+
+
+for 39 loops:
+explicit: 54 us
+looped: 41 for
+currentline instead of array lookup: 11.5
+pointer method: 41 us
+bitshift instead of division: 35
+bitshift with and instead of division: 35
+bitshifts and square sine and taking out whitelevel: 37
+squaresine same speed as proper sine
+memset blanks then +=: 45
+taking the assumed division by 128 for levelwhite out and adding levelblank to take level white out of the brackets
+^^^ that: 32.5 us
+sequential interleaved sin/cos: 33 us
+y=u=v=currentline: 4.2us
+^^that and sin&cos = currentline: 1.9 us
+
+
+24 us doing the porches
+3.2 us of that is the dma copy
+
+
+
+
+slightly faster to read from RAM x3 than to do the bit shifts for yuv? (10%)
+so store in yuv? 
+125x83 then line double? (84?)
+	effective & actual xresolution?
