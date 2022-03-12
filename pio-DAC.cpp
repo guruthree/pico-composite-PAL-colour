@@ -20,7 +20,7 @@ uint8_t levelConversion(uint8_t in) {
 void core1_entry();
 
 #define YRESOLUTION 250
-#define YDATA_START 44
+#define YDATA_START 43
 #define YDATA_END (YDATA_START+YRESOLUTION)
 #define YDATA_NEXTFIELD 312
 
@@ -28,15 +28,15 @@ void core1_entry();
 
 int dma_chan, dma_chan32;
 
-float DACfreq;
+double DACfreq;
 uint32_t samplesLine;
-float syncVolts, blankVolts, blackVolts, whiteVolts;
+double syncVolts, blankVolts, blackVolts, whiteVolts;
 uint8_t levelSync, levelBlank, levelBlack, levelWhite;
-float levelBlankU, levelWhiteU, levelColorU;
+double levelBlankU, levelWhiteU, levelColorU;
 
 int main() {
 //    stdio_init_all();
-    set_sys_clock_khz(250000, true);
+    set_sys_clock_khz(284000, true);
     xosc_init(); // hardware oscillator for more stable clocks?
 
     gpio_init(18);
@@ -53,13 +53,15 @@ int main() {
     sleep_ms(1000);
     gpio_put(20, 1); // B
 
-    uint8_t frequency_divider = 2;
+    uint8_t frequency_divider = 4;
     uint8_t frequency_divider_frac = 0;
 
     DACfreq = clock_get_hz(clk_sys) / (frequency_divider + frequency_divider_frac/256); // keep a nice ratio of system clock?
+//    DACfreq *= 0.98; // calibration?
+//    DACfreq *= 1.0001; // calibration?
 //printf("%0.2f\n", DACfreq);
     samplesLine = 64 * DACfreq / 1000000; // 64 microseconds
-    float divpervolt = 70 / 1.02; // ADC scaling
+    double divpervolt = 70 / 1.02; // ADC scaling
     syncVolts = -0.3;
     blankVolts = 0.0; 
     blackVolts =  0.0;
@@ -109,10 +111,10 @@ int main() {
     );
 
 
-    multicore_launch_core1(core1_entry);
+//    multicore_launch_core1(core1_entry);
 //    while (1) { sleep_us(1); } // need this for USB!
 
-//    core1_entry();
+    core1_entry();
 }
 
 void resetLines(uint8_t line1[], uint8_t line3[], uint8_t line4[], uint8_t line6[], uint8_t line313[], uint8_t aline[]) {
@@ -176,9 +178,9 @@ void populateLines(uint8_t line1[], uint8_t line3[], uint8_t line4[], uint8_t li
     memcpy(alineEven, aline, samplesLine);
 }
 
-void calculateCarrier(float colourCarrier, float COS[], float SIN[]) {
+void calculateCarrier(double colourCarrier, double COS[], double SIN[]) {
     for (uint32_t i = 0; i < samplesLine; i++) {
-        float x = float(i)/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
+        double x = double(i)/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
         COS[i] = cosf(x); // odd lines
         SIN[i] = sinf(x); // even lines
 //COS[i] = 0;
@@ -194,7 +196,7 @@ void calculateCarrier(float colourCarrier, float COS[], float SIN[]) {
     }
 }
 
-void populateBurst(float COS[], float SIN[], uint8_t burstOdd[], uint8_t burstEven[], 
+void populateBurst(double COS[], double SIN[], uint8_t burstOdd[], uint8_t burstEven[], 
         uint8_t line6odd[], uint8_t line6even[], uint8_t alineOdd[], uint8_t alineEven[]) {
     for (uint32_t i = 0; i < samplesBurst; i++) {
         burstOdd[i] = levelConversion(levelColorU*COS[i] + levelBlankU); // with out addition it would try and be negative
@@ -211,20 +213,20 @@ bool active = false;
 
 void core1_entry() {
 
-//    float colourCarrier = 4433618.75;//*1.1692; // the exact 1.1692?
-//    float colourCarrier = 4.88e6;
+    double colourCarrier = 4433618.75;//*1.1692; // the exact 1.1692?
+//    double colourCarrier = 4.88e6;
 // 4.88e6 on the inside, 5.15e6 on the outside ( while 1us delay, 200 mhz sysclock)
 // 5 to 5.39 - 5.09 to 5.10 or 5.17 to 5.18
-//    float colourCarrier = 5.18e6; // - OK with no loop and half line only
-//    float colourCarrier = 2e6;
-    float colourCarrier = 5.165e6;
+//    double colourCarrier = 5.18e6; // - OK with no loop and half line only
+//    double colourCarrier = 2e6;
+//    double colourCarrier = 1e5;
 
-    float r = 0.9;
-    float g = 0.9;
-    float b = 0.0;
-    float y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
-    float u = 0.493 * (b - y);
-    float v = 0.877 * (r - y);
+    double r = 0.35; // g ?
+    double g = 0.8; // r ?
+    double b = 0.0;
+    double y = 0.299 * r + 0.587 * g + 0.114 * b; // luminance
+    double u = 0.493 * (b - y);
+    double v = 0.877 * (r - y);
 
     uint8_t bufferline[2][samplesLine];
 
@@ -239,8 +241,8 @@ void core1_entry() {
     uint8_t alineOdd[samplesLine];
     uint8_t alineEven[samplesLine];
 
-    float COS[samplesLine];
-    float SIN[samplesLine];
+    double COS[samplesLine];
+    double SIN[samplesLine];
 
     samplesGap = 4.7 * DACfreq / 1000000;
     samplesShortPulse = 2.35 * DACfreq / 1000000;
@@ -330,11 +332,17 @@ void core1_entry() {
             calculateCarrier(colourCarrier, COS, SIN); // pre-calculate sine and cosine
             populateBurst(COS, SIN, burstOdd, burstEven, line6odd, line6even, alineOdd, alineEven); // put colour burst in arrays
 
-            for (i = samplesHsync+samplesBackPorch+(0.75*(DACfreq / 1000000)); i < halfLine; i++) { //samplesLine-samplesFrontPorch-(0.75*(DACfreq / 1000000)); i++) {
+//            for (i = samplesHsync+samplesBackPorch+(0.75*(DACfreq / 1000000)); i < halfLine; i++)
+            uint32_t ioff = samplesHsync+samplesBackPorch+(0.75*(DACfreq / 1000000));
+            for (i = ioff; i < samplesLine-samplesFrontPorch-(0.75*(DACfreq / 1000000)); i++) {
                 // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
-                alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] + v * COS[i]));
+                alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i-ioff] + v * COS[i-ioff]));
                 // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
-                alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
+                alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i-ioff] - v * COS[i-ioff]));
+
+//                alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU * (y + v * SIN[i] + u * COS[i]));
+//                alineEven[i] = levelConversion(levelBlankU + levelWhiteU * (y + v * SIN[i] - u * COS[i]));
+
 //        alineOdd[i]  = levelConversion(levelBlankU + levelWhiteU);*2
 //        alineEven[i] = levelConversion(levelBlankU + levelWhiteU);
 
