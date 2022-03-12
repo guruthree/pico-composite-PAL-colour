@@ -265,9 +265,9 @@ class ColourPal {
             uint8_t backbuffer_B[SAMPLES_COLOUR];
             memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
 
-        int32_t __attribute__((__aligned__(4))) COS3[30];
-        int32_t __attribute__((__aligned__(4))) SIN3[30];
-        for (uint32_t i = 0; i < 30; i++) {
+        int32_t __attribute__((__aligned__(4))) COS3[24];
+        int32_t __attribute__((__aligned__(4))) SIN3[24];
+        for (uint32_t i = 0; i < 24; i++) {
             float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
             COS3[i] = levelWhite*cosf(x); 
             SIN3[i] = levelWhite*sinf(x); 
@@ -391,7 +391,7 @@ while (true) {
                     uint32_t dmai2;
 
 //                    for (uint32_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
-                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*10); i += SAMPLES_PER_PIXEL-1) {
+                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*39); i += SAMPLES_PER_PIXEL-1) {
 //                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*59); i += SAMPLES_PER_PIXEL-1) {
                         // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
                       // make y, u, v out of 127
@@ -402,19 +402,21 @@ while (true) {
                         v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
 
 			int32_t *SIN3p = &SIN3[0];
-			int32_t *COS3p = &COS3[0];
+//			int32_t *COS3p = &COS3[0];
+			int32_t *COS3p = &SIN3[9];
 
                         for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) { // SAMPLES_PER_PIXEL
                             // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
 //                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * COS3[dmai2-i]) / 128;
 //                            backbuffer_B[dmai2] = levelBlank + (y + u * SIN3[dmai2-i] + v * COS3[dmai2-i]) / 128;
 
-			int32_t *SIN3p = &SIN3[dmai2-i];
-			int32_t *COS3p = &COS3[dmai2-i];
+//			int32_t *SIN3p = &SIN3[dmai2-i];
+//			int32_t *COS3p = &COS3[dmai2-i];
 //                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * (*SIN3p) + dmavfactor * v * (*COS3p)) / 128;
-                            backbuffer_B[dmai2] = levelBlank + (y + u * (*SIN3p) + v * (*COS3p)) / 128;
-//			    SIN3p += sizeof(int32_t);
-			    COS3p += sizeof(int32_t);
+//                            backbuffer_B[dmai2] = levelBlank + (y + u * (*SIN3p) + v * (*COS3p)) / 128;
+                            backbuffer_B[dmai2] = levelBlank + (y + u * (*(SIN3p++)) + v * (*(COS3p++))) / 128;
+//			    SIN3p++;// += sizeof(int32_t);
+//			    COS3p++;// += sizeof(int32_t);
 
 //                            backbuffer_B[dmai2] = levelBlank + (y + u * SIN3[dmai2-i] + v * SIN3[dmai2-i+9]) / 128;
 

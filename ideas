@@ -1,58 +1,32 @@
-write directly into the buffer as it's being read by DMA
-    (ie remove page swap)
-
-do the copy while the porches go?
-(calculate while the other line is sent)
-
-do the copy at the tail end of sending the colour data/front porch?
-
-
-can you copy tbuf to the buffer without the delay?
+explicitly write out inner loop
+a bunch of individual ints for the sin/cos?
 
 
 how much time does the calculation really take?
-
-dma_channel chaining?
-    channel_config_set_chain_to()
-at the end of the dma transfer the next transfer is handled by a different dma?
-could use two DMAs chained to compute two scanlines at once
-
-^ this isn't working - the data is split up, but the chain doesn't chain
+    it seems like the SIN[] and COS[] array access is what's killing the speed?
 
 
-
-issue with copying RAM quickly
-seems like it might be something to do with SRAM banking?
+15 pixels for the looping of the carrier, seems like working from the shorter array is marginally faster
 
 
-banks?
-manually specify banks
-__scratch_x
-doesn't seem to be helping, am I missing something?
+30 samples/pixel?
+use dma to copy the 15 repeating pattern?
 
 
-
-https://github.com/raspberrypi/pico-sdk/blob/master/src/rp2_common/pico_standard_link/memmap_default.ld
-https://forums.raspberrypi.com/viewtopic.php?t=318030
-https://mickey--happygolucky-hatenablog-com.translate.goog/entry/2021/02/21/171703?_x_tr_sl=ja&_x_tr_tl=en&_x_tr_hl=en&_x_tr_pto=sc
-https://forums.raspberrypi.com/viewtopic.php?t=302935
-
-
-
-the rgb to yuv pre conversion isn't quite working right
-    negative u/v values?
+sin wave already in backbuffer, then +=?
 
 
 
 
-maybe better throughput using the second core for processing to lines?
+
+2 bits each for y/u/v isn't brilliant
+
+
 
 somework on one core some work on the other?
 iterrupt/signal to the other core?
 
 
-
-clocked to fast to access flash memory?
 
 test with regular pico and same DAC
 test with pico in regular vga board DAC
