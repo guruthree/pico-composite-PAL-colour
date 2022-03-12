@@ -7,7 +7,7 @@
 
 % c-sdk {
 #define PIN_COUNT 8
-static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base, uint8_t divider, uint8_t div_frac=0) {
+static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base, uint8_t divider, uint8_t div_frac) {
     for(uint i=pin_base; i<pin_base+PIN_COUNT; i++) {
         pio_gpio_init(pio, i);
     }
