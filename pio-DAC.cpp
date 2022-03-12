@@ -75,18 +75,21 @@ int main() {
     );
 
 
-//    multicore_launch_core1(core1_entry);
+    multicore_launch_core1(core1_entry);
 
-    cp.init();
-    cp.start();
+//    cp.init();
+//    cp.start();
 
     while (1) { tight_loop_contents(); } // need this for USB!
 }
 
-/*uint64_t tmp;
 void core1_entry() {
+
+    ColourPal cp;
+    cp.init();
+    cp.start();
+
     while (1) {
         tight_loop_contents();
-        tmp++;
     }
-}*/
+}

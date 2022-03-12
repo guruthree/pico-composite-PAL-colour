@@ -21,7 +21,7 @@ const uint32_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
 
 // where we are copying data to in the scanline
 const uint32_t SAMPLES_OFF = (1.025*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts
-const uint32_t SAMPLES_PER_PIXEL = 20;
+const uint32_t SAMPLES_PER_PIXEL = 16; // was 20
 const uint32_t SAMPLES_COLOUR = XRESOLUTION * SAMPLES_PER_PIXEL; // 3320 points of the colour data to send
 
 //const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH + SAMPLES_OFF + <whatever is leftover at the end of the colour data>; // 816
@@ -40,7 +40,7 @@ void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int32_t &v
 }
 
 // the next lines coming up
-uint8_t __scratch_x("screenbuffer") screenbuffer_B[SAMPLES_COLOUR];
+uint8_t __scratch_y("screenbuffer") screenbuffer_B[SAMPLES_COLOUR];
 //uint8_t __scratch_y("backbuffer") backbuffer_B[SAMPLES_COLOUR];
 //uint8_t screenbuffer_B[SAMPLES_COLOUR];
 //uint8_t backbuffer_B[SAMPLES_COLOUR];
@@ -75,12 +75,12 @@ class ColourPal {
         uint8_t line4_B[SAMPLES_COLOUR];
         // each line is setup to be an A part and B part so that the colour data is < 4096 bytes and can be fit
         // within SRAM banks 5 and 6 (scratch x and y) to avoid contention with writing to one while the other
-        // is read by the DMA
+        // is read by the DMA... maybe...
 
         // for colour
         const float COLOUR_CARRIER = 4433618.75; // this needs to divide in some fashion into the DAC_FREQ
-        int32_t COS2[SAMPLES_COLOUR];
-        int32_t SIN2[SAMPLES_COLOUR];
+//        int32_t COS2[SAMPLES_COLOUR];
+//        int32_t SIN2[SAMPLES_COLOUR];
         // the colour burst
         uint8_t burstOdd[SAMPLES_BURST]; // for odd lines
         uint8_t burstEven[SAMPLES_BURST]; // for even lines
@@ -155,10 +155,10 @@ class ColourPal {
 
             // pre-calculate all the lines that don't change depending on what's being shown
             resetLines();
-            // pre-calculate the colour carrier that the colour data is embeeded in
-            calculateCarrier();
             // pre-calculate colour burst (includes convserion to DAC voltages)
             populateBurst();
+            // pre-calculate the colour carrier that the colour data is embeeded in
+//            calculateCarrier();
             // default simple test pattern
             createColourBars();
 
@@ -199,26 +199,25 @@ class ColourPal {
 
         }
 
-        void calculateCarrier() {
-            for (uint32_t i = 0; i < SAMPLES_COLOUR; i++) {
-                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
-                COS2[i] = levelWhite*cosf(x); // odd lines
-                SIN2[i] = levelWhite*sinf(x); // even lines (sin vs cos gives the phase shift)
-            }
-        }
-
         void populateBurst() {
             for (uint32_t i = 0; i < SAMPLES_BURST; i++) {
-                // the + here is a really fine adjustment on the carrier? it tunes colour bars fading at the top.
-                // the phase offset here is also odd
+                // the + here is a really fine adjustment on the carrier?
                 float x = float(i-6.5) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
-                burstOdd[i] = (levelColor*cosf(x) + levelBlank); // with out addition it would try and be negative
-                burstEven[i] = (levelColor*sinf(x) + levelBlank);
+                burstOdd[i] = (levelColor*cosf(x) + levelBlank); // odd lines, with out addition it would try and be negative
+                burstEven[i] = (levelColor*sinf(x) + levelBlank); // even lines (sin vs cos gives the phase shift)
             }
 
             memcpy( line6odd_A + SAMPLES_FRONT_PORCH + SAMPLES_UNTIL_BURST + SAMPLES_DEAD_SPACE, burstOdd, SAMPLES_BURST);
             memcpy(line6even_A + SAMPLES_FRONT_PORCH + SAMPLES_UNTIL_BURST + SAMPLES_DEAD_SPACE, burstEven, SAMPLES_BURST);
         }
+
+/*        void calculateCarrier() {
+            for (uint32_t i = 0; i < SAMPLES_COLOUR; i++) {
+                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
+                COS2[i] = levelWhite*cosf(x); 
+                SIN2[i] = levelWhite*sinf(x); 
+            }
+        }*/
 
         void createColourBars() {
 
@@ -245,11 +244,15 @@ class ColourPal {
                 else
                     rgb2yuv(0, 0, 0, y, u, v);
 
+                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
+                int32_t COS2 = levelWhite*cosf(x); 
+                int32_t SIN2 = levelWhite*sinf(x);
+
                 // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
-                // +- cos is flipped...
-                colourbarsOdd_B[i]  = levelBlank + (y * levelWhite + u * SIN2[i] - v * COS2[i]) / 128;
+                // +- cos is flipped...?
+                colourbarsOdd_B[i]  = levelBlank + (y * levelWhite + u * SIN2 - v * COS2) / 128;
                 // even lines of fields 1 & 2 and odd lines of fields 3 & 4?
-                colourbarsEven_B[i] = levelBlank + (y * levelWhite + u * SIN2[i] + v * COS2[i]) / 128;
+                colourbarsEven_B[i] = levelBlank + (y * levelWhite + u * SIN2 + v * COS2) / 128;
             }
         }
 
@@ -261,12 +264,19 @@ class ColourPal {
 
 
         void __time_critical_func(dmaHandler)() {
-uint8_t backbuffer_B[SAMPLES_COLOUR];
+            uint8_t backbuffer_B[SAMPLES_COLOUR];
             memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
-//int32_t *dmavfactorp;
+
+        int32_t COS3[15];
+        int32_t SIN3[15];
+        for (uint32_t i = 0; i < 15; i++) {
+            float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
+            COS3[i] = levelWhite*cosf(x); 
+            SIN3[i] = levelWhite*sinf(x); 
+        }
 
 while (true) {
-                    int32_t dmavfactor;
+            int32_t dmavfactor;
             switch (currentline) {
                 case 1 ... 2:
                     dma_channel_set_read_addr(dma_channel_A, line1_A, true);
@@ -312,8 +322,7 @@ while (true) {
 //                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                        dma_channel_set_read_addr(dma_channel_B, bufferOdd_B, false);
 //                        dma_channel_set_read_addr(dma_channel_A, bufferOdd_B, true);
-                        dmavfactor = 1;
-//dmavfactorp = COS2;
+                        dmavfactor = 1; // next up is even
                     }
                     else {
                         dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
@@ -321,8 +330,7 @@ while (true) {
 //                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
 //                        dma_channel_set_read_addr(dma_channel_B, bufferEven_B, false);
 //                        dma_channel_set_read_addr(dma_channel_A, bufferEven_B, true);
-                        dmavfactor = -1;
-//dmavfactorp = COS2;
+                        dmavfactor = -1; // next up is odd
                     }
 
                     dmacpy(screenbuffer_B, backbuffer_B, SAMPLES_COLOUR);
@@ -370,33 +378,30 @@ while (true) {
                 }
                 else {
 
-                    int32_t y = 0, u = 0, v = 0;
+                    int32_t y = 50, u = 0, v = 0;
 
-                    uint8_t tbuf[SAMPLES_COLOUR];
-//                    memset(backbuffer_B, levelBlank, SAMPLES_COLOUR);
-/*                    if (currentline & 1) {// this is multiplied by v to get even odd lines
-                        dmavfactor = 1;
-                    }
-                    else {
-                        dmavfactor = -1;
-                    }*/
-                      
-                    // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is / 2
+                    // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is divided by 2
                     uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
 
-
 //                    for (uint32_t i = 0; i < SAMPLES_COLOUR; i += SAMPLES_PER_PIXEL) {
-                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*22); i += SAMPLES_PER_PIXEL) {
-                    // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
-                    // make y, u, v out of 127
-                    y = (*idx >> 1) & 0b01100000;
-                    u = (((*idx >> 3) & 7) - 3) << 5;
-                    v = ((*(idx++) & 7) - 3) << 5;
-                    // make y, u, v out of 127
+                    for (uint32_t i = 0; i < (SAMPLES_PER_PIXEL*37); i += SAMPLES_PER_PIXEL-1) {
+                        // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
+                        // make y, u, v out of 127
+                        y = (*idx >> 1) & 0b01100000;
+                        u = (((*idx >> 3) & 7) - 3) << 5;
+                        v = ((*(idx++) & 7) - 3) << 5;
+                        // make y, u, v out of 127
 
-                        for (uint32_t dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL; dmai2++) { // SAMPLES_PER_PIXEL
-                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128;
-//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + v * dmavfactorp[dmai2]) / 128 ;
+                        for (uint32_t dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) { // SAMPLES_PER_PIXEL
+//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN2[dmai2] + dmavfactor * v * COS2[dmai2]) / 128;
+
+
+                            // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle
+                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * COS3[dmai2-i]) / 128;
+
+
+//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite + u * currentline + dmavfactor * v * currentline) / 128;
+//                            backbuffer_B[dmai2] = levelBlank + (y * levelWhite) / 128;
                         }
                     }
 
@@ -439,8 +444,8 @@ dmaHandler();
 
 };
 
-ColourPal cp;
+//ColourPal cp;
 
-void cp_dma_handler() {
-    cp.dmaHandler();
-}
+//void cp_dma_handler() {
+//    cp.dmaHandler();
+//}
