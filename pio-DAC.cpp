@@ -11,10 +11,11 @@
 #include <cstring>
 #include <math.h>
 
-uint8_t ADC_TABLE[70] = { 0, 3, 7, 11, 14, 18, 21, 25, 28, 31, 32, 36, 39, 43, 46, 50, 53, 57, 61, 70, 74, 77, 81, 84, 88, 92, 95, 96, 100, 105, 108, 111, 115, 129, 132, 136, 140, 143, 147, 150, 154, 157, 159, 161, 164, 168, 171, 175, 179, 182, 186, 189, 198, 202, 206, 210, 213, 217, 220, 223, 224, 227, 230, 234, 237, 241, 244, 248, 252, 255 };
+uint8_t ADC_TABLE[70] = { 0, 4, 8, 11, 14, 18, 21, 25, 29, 31, 33, 36, 39, 43, 46, 50, 53, 58, 61, 71, 75, 78, 82, 85, 89, 91, 95, 98, 101, 105, 109, 112, 116, 119, 132, 136, 140, 143, 147, 151, 154, 157, 159, 161, 164, 168, 172, 175, 179, 182, 192, 189, 199, 203, 206, 209, 213, 217, 220, 223, 224, 227, 231, 235, 238, 241, 245, 249, 252, 255 };
 
 uint8_t levelConversion(uint8_t in) {
     return ADC_TABLE[in];
+//    return in;
 }
 
 void core1_entry();
@@ -32,8 +33,8 @@ void core1_entry();
 int main() {
 //    stdio_init_all();
 //    set_sys_clock_khz(160000, true); // 160 MHz
+//    set_sys_clock_khz(284000, true); // top speed: 284 MHz
     set_sys_clock_khz(266000, true);
-//    set_sys_clock_khz(204000, true);
 
     xosc_init(); // hardware oscillator for more stable clocks?
 
@@ -60,20 +61,23 @@ int main() {
 //const uint16_t XDATA_START = DACfreq / 1e6 * 12;
 //const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
     uint16_t samplesLine = 64 * DACfreq / 1000000; // 64 microseconds
-//    float Vcc = 1.02; // max VCC of DAC
-//    float dacPerVolt = 255.0 / Vcc;
-    float divpervolt = 70 / 1.02; // 0.975659 is about the practical highest output
+    //float divpervolt = 70 / 1.02; // 0.975659 is about the practical highest output
+    float divpervolt = 255 / 1.02;
     float syncVolts = -0.3;
     float blankVolts = 0.0; 
     float blackVolts =  0.0;
     float whiteVolts = 0.4; // anyhigher and integer wrapping?
     uint8_t levelSync = 0;
-    uint8_t levelBlank = ADC_TABLE[uint8_t((blankVolts - syncVolts) * divpervolt + 0.5)];
-    uint8_t levelBlack = ADC_TABLE[uint8_t((blackVolts - syncVolts) * divpervolt + 0.5)];
-    uint8_t levelWhite = ADC_TABLE[uint8_t((whiteVolts - syncVolts) * divpervolt + 0.5)];
+//    uint8_t levelBlank = ADC_TABLE[uint8_t((blankVolts - syncVolts) * divpervolt + 0.5)];
+//    uint8_t levelBlack = ADC_TABLE[uint8_t((blackVolts - syncVolts) * divpervolt + 0.5)];
+//    uint8_t levelWhite = ADC_TABLE[uint8_t((whiteVolts - syncVolts) * divpervolt + 0.5)];
+    uint8_t levelBlank = levelConversion(uint8_t((blankVolts - syncVolts) * divpervolt + 0.5));
+    uint8_t levelBlack = levelConversion(uint8_t((blackVolts - syncVolts) * divpervolt + 0.5));
+    uint8_t levelWhite = levelConversion(uint8_t((whiteVolts - syncVolts) * divpervolt + 0.5));
     float colourCarrier = 4433618.75; // the exact
     // works better with 266/30 or 133/15
-//    float colourCarrier = 4.433e6; // 266 MHz & a divider of 15
+//    float colourCarrier = (368/83)*1e6;
+//    float colourCarrier = (266/60)*1e6; // 266 MHz & a divider of 15
 //    float colourCarrier = 4.4336e6; // 200 MHz & a divider of 11 + 136/256
     float levelBlankU = (blankVolts - syncVolts) * divpervolt + 0.5;
     float levelWhiteU = (whiteVolts - syncVolts) * divpervolt + 0.5;
