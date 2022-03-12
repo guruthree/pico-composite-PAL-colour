@@ -1,0 +1,20 @@
+trying to get a solid screen of color
+play around with different frequencies?
+    200 system clock with divider of 15?
+
+
+uneven clock divider?
+
+
+40/3 to get 13 mhz?
+
+
+octave:19> 4433618.75 * (47 + 94/256)
+ans =  210008050.63477
+
+octave:36> 4433618.75 * 4 * (11 + 71/256)
+ans =  199997770.80078
+
+octave:45> 4433618.75 * 4 * (11 + 216/256)
+ans =  210042688.28125
+

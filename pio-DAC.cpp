@@ -30,7 +30,9 @@ void core1_entry();
 
 int main() {
 //    stdio_init_all();
-    set_sys_clock_khz(222000, true); // 160 MHz
+//    set_sys_clock_khz(160000, true); // 160 MHz
+//    set_sys_clock_khz(222000, true);
+    set_sys_clock_khz(200000, true);
 
     gpio_init(18);
     gpio_init(19);
@@ -51,9 +53,9 @@ int main() {
 //    uint8_t frequency_divider = 12;
 //    uint8_t frequency_divider_frac = 129;
     float DACfreq = clock_get_hz(clk_sys) / (frequency_divider + frequency_divider_frac/256); // keep a nice ratio of system clock?
-const uint16_t XRESOLUTION = DACfreq / 1e6 * 50;
-const uint16_t XDATA_START = DACfreq / 1e6 * 12;
-const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
+//const uint16_t XRESOLUTION = DACfreq / 1e6 * 50;
+//const uint16_t XDATA_START = DACfreq / 1e6 * 12;
+//const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
     uint16_t samplesLine = 64 * DACfreq / 1000000; // 64 microseconds
 //    float Vcc = 1.02; // max VCC of DAC
 //    float dacPerVolt = 255.0 / Vcc;
@@ -70,7 +72,7 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
 //    float colourCarrier = 4.4386e6;
     float levelBlankU = (blankVolts - syncVolts) * divpervolt + 0.5;
     float levelWhiteU = (whiteVolts - syncVolts) * divpervolt + 0.5;
-    float levelColorU = 0.233 * divpervolt + 0.5; // scaled and used to add on top of other signal
+    float levelColorU = 0.15 * divpervolt + 0.5; // scaled and used to add on top of other signal
     // U suffix indicates it hasn't been ADC converted
 
 
@@ -133,11 +135,11 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
 
     uint16_t samplesGap = 4.7 * DACfreq / 1000000;
     uint16_t samplesShortPulse = 2.35 * DACfreq / 1000000;
-    uint16_t samplesHsync = 4.7 * DACfreq / 1000000;
+    uint16_t samplesHsync = 4.85 * DACfreq / 1000000;
     uint16_t samplesBackPorch = 5.7 * DACfreq / 1000000;
     uint16_t samplesFrontPorch = 1.65 * DACfreq / 1000000;
-    uint16_t samplesUntilBurst = 5.6 * DACfreq / 1000000; // burst starts at this time
-    uint16_t samplesBurst = 2.5 * DACfreq / 1000000;
+    uint16_t samplesUntilBurst = 5.25 * DACfreq / 1000000; // burst starts at this time
+    uint16_t samplesBurst = 2.8 * DACfreq / 1000000;
 
     uint16_t halfLine = samplesLine/2;
 
@@ -155,19 +157,19 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
         aline[i] = levelBlank; // just blank
     }
 
+    float COS[samplesLine];
+    float SIN[samplesLine];
+    for (i = 0; i < samplesLine; i++) {
+        float x = i/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
+        COS[i] = cos(x); // odd lines
+        SIN[i] = sin(x); // even lines
+    }
+
     uint8_t burstEven[samplesBurst]; // for even lines
     uint8_t burstOdd[samplesBurst]; // for odd lines
     for (i = 0; i < samplesBurst; i++) {
-        float x = i/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
-        burstOdd[i] = levelConversion(levelColorU*cos(x) + levelBlankU); // with out addition it would try and be negative
-        burstEven[i] = levelConversion(levelColorU*sin(x) + levelBlankU);
-    }
-    float COS[XRESOLUTION];
-    float SIN[XRESOLUTION];
-    for (i = 0; i < XRESOLUTION; i++) {
-        float x = i/DACfreq*2.0*M_PI*colourCarrier+135.0/180.0*M_PI;
-        COS[i] = cos(x);
-        SIN[i] = sin(x);
+        burstOdd[i] = levelConversion(levelColorU*COS[i] + levelBlankU); // with out addition it would try and be negative
+        burstEven[i] = levelConversion(levelColorU*SIN[i] + levelBlankU);
     }
 
     for (i = halfLine-samplesGap-1; i < halfLine; i++) { // broad sync x2
@@ -212,7 +214,7 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
 //    for (i = samplesHsync+samplesBackPorch; i < samplesLine-samplesFrontPorch; i++) {
 //        aline[i] = levelBlank+i/8;
 //    }
-    for (i = XDATA_START; i < XDATA_END; i++) {
+    for (i = samplesHsync+samplesBackPorch; i < samplesLine-samplesFrontPorch; i++) {
         aline[i] = levelWhite;
     }
 
@@ -247,14 +249,16 @@ const uint16_t XDATA_END = (XDATA_START+XRESOLUTION);
 
 
     float r = 0;
-    float g = 0.5;
+    float g = 1;
     float b = 0;
     float y = 0.299 * r + 0.587 * g + 0.114 * b; 
     float u = 0.493 * (b - y);
     float v = 0.877 * (r - y);
-    for (i = 0; i < XRESOLUTION; i++) {
-        alineOdd[XDATA_START+i] = levelConversion(levelBlankU + levelWhiteU * (y +  u * SIN[i] + v * COS[i]));
-        alineEven[XDATA_START+i] =  levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[i] - v * COS[i]));
+    uint16_t at = 0;
+    for (i = samplesHsync+samplesBackPorch; i < samplesLine-samplesFrontPorch; i++) {
+        alineOdd[i] = levelConversion(levelBlankU + levelWhiteU * (y +  u * SIN[at] + v * COS[at]));
+        alineEven[i] =  levelConversion(levelBlankU + levelWhiteU * (y + u * SIN[at] - v * COS[at]));
+        at++;
     }
 
 
