@@ -26,7 +26,11 @@
 void core1_entry();
 
 int main() {
+//    stdio_init_all();
     set_sys_clock_khz(CLOCK_SPEED/1e3, true);
+
+//sleep_ms(1500);
+//printf("hello world\n");
 
     gpio_init(18);
     gpio_init(19);
@@ -42,7 +46,7 @@ int main() {
     sleep_ms(1000);
     gpio_put(20, 1); // B
 
-    multicore_launch_core1(core1_entry);
+//    multicore_launch_core1(core1_entry);
 
     cp.init();
     cp.start();
@@ -50,12 +54,10 @@ int main() {
     while (1) { tight_loop_contents(); } // need this for USB!
 }
 
-uint64_t tmp;
+/*uint64_t tmp;
 void core1_entry() {
     while (1) {
         tight_loop_contents();
         tmp++;
     }
-    
-}
-
+}*/
