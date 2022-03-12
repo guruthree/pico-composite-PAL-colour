@@ -303,6 +303,7 @@ class ColourPal {
 	    CARRIER[i+1] = levelWhite*cosf(x);
 	}
 
+        uint8_t __attribute__((__aligned__(4))) lineBuffer[168];
 
 while (true) {
             int32_t dmavfactor;
@@ -363,6 +364,11 @@ while (true) {
                     }
 
                     dmacpy(screenbuffer_B, backbuffer_B, SAMPLES_COLOUR);
+
+			// we think accessing smaller arrays is quicker, so the next line of the picture let's copy
+			// (so that we can access the little array fast)
+                    dmacpy(lineBuffer, buf + ((currentline - YDATA_START) / 2) * XRESOLUTION, 168);
+
                     dma_channel_wait_for_finish_blocking(dma_channel_A);
                     dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
                     dma_channel_set_read_addr(dma_channel_A, screenbuffer_B, true);
@@ -411,7 +417,8 @@ while (true) {
 			int32_t *CARRIERp;
 
                     // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is divided by 2
-                    uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
+//                    uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION;
+                    uint8_t *idx = &lineBuffer[0];
                     uint32_t dmai2;
 
     gpio_put(26, 1);
