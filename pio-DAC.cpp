@@ -10,7 +10,6 @@
 #include "hardware/irq.h"
 #include "hardware/clocks.h"
 #include "dac.pio.h"
-#include "testcardf.h"
 
 #define CLOCK_SPEED 266e6
 #define CLOCK_DIV 3.99974249778092305618
@@ -51,7 +50,7 @@ int main() {
     cp.init();
     cp.start();
 
-    while (1) { tight_loop_contents(); } // need this for USB!
+//    while (1) { tight_loop_contents(); } // need this for USB!
 }
 
 /*uint64_t tmp;

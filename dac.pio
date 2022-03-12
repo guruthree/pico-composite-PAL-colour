@@ -34,7 +34,6 @@ static inline void dac_program_init(PIO pio, uint sm, uint offset, uint pin_base
     sm_config_set_out_pins(&c, pin_base, PIN_COUNT);
 
     sm_config_set_clkdiv(&c, divider);
-//    sm_config_set_clkdiv_int_frac(&c, divider, 1);
 
     // join the FIFO buffers to get more DMA throughput?
     // we use the transmit only so join RX to the TX?
