@@ -93,7 +93,7 @@ int main() {
             cp.setBuf(mycardpng);
         }
         if (++at == 3) at = 0;
-        sleep_ms(2000);
+        sleep_ms(5000);
     }
 }
 

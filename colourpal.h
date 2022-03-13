@@ -400,7 +400,7 @@ class ColourPal {
                 if (++currentline == 313) {
                     currentline = 1;
                     gpio_put(18, led = !led); // this really should be flickering more? 
-                    memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
+                    memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR); // in case anything hangs on from an array size issue
                 }
 
             } // while (true)
