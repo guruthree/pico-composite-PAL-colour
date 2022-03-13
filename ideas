@@ -1,19 +1,8 @@
-a #define for anamorphic stretch
-one all joined together array so one idx pointer with 3 offsets?
-val = val = calc assignment
-rather than array = array assignment
-put desired pixel in temp variable and assign that?
-one big interleaved array
-maybe that garbage line at the top is something not being initialised, check switch statement
+62x125 with doubling
+or 
+78x125 without
 
-get out scope and compare timings again...
 
-is there a better way of doing the duplication?
-let's jigger the start of the frame some? I think we'll have to underscan
-
-slightly faster to read from RAM x3 than to do the bit shifts for yuv? (10%)
-so store in yuv? 
-84x125 anamorphic
 effective & actual xresolution?
 yes shows more, but not as much as I hoped
     58 out of 84 pixels

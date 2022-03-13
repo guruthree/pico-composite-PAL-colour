@@ -12,9 +12,7 @@ clc
     im = im / 2; % divide by two for 0-127 range
 %     imshow(im)
     
-    out_y = '';
-    out_u = '';
-    out_v = '';
+    out = '';
 
     for yy=1:size(im,1)
         for xx=1:size(im,2)
@@ -29,31 +27,27 @@ clc
          
 %             fprintf('%d %d %d to %d %d %d\n', r, g, b, y, u, v);
 
-            out_y = sprintf('%s 0x%x,', out_y, y);
+            out = sprintf('%s 0x%x,', out, y);
 
             if u >= 0
-                out_u = sprintf('%s 0x%x,', out_u, u);
+                out = sprintf('%s 0x%x,', out, u);
             else
-                out_u = sprintf('%s -0x%x,', out_u, -u);
+                out = sprintf('%s -0x%x,', out, -u);
             end
 
             if v >= 0
-                out_v = sprintf('%s 0x%x,', out_v, v);
+                out = sprintf('%s 0x%x,', out, v);
             else
-                out_v = sprintf('%s -0x%x,', out_v, -v);
+                out = sprintf('%s -0x%x,', out, -v);
             end
         end
 
-        out_y = sprintf('%s\n', out_y);
-        out_u = sprintf('%s\n', out_u);
-        out_v = sprintf('%s\n', out_v);
+        out = sprintf('%s\n', out);
     end
 
     file = strrep(file, '.', '');
 
-    fprintf('int8_t __not_in_flash("%s_y") %s_y[] = {\n%s};\n\n', file, file, out_y);
-    fprintf('int8_t __not_in_flash("%s_u") %s_u[] = {\n%s};\n\n', file, file, out_u);
-    fprintf('int8_t __not_in_flash("%s_v") %s_v[] = {\n%s};\n\n', file, file, out_v);
+    fprintf('int8_t __not_in_flash("%s") %s[] = {\n%s};\n\n', file, file, out);
     
     function [y, u, v] = rgb2yuv(r, g, b)
         y = 5 * r / 16 + 9 * g / 16 + b / 8;
