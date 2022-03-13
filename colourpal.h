@@ -2,10 +2,9 @@
 
 #define XRESOLUTION 84
 #define EFFECTIVE_XRESOLUTION (XRESOLUTION*2) // stretch from anamorphic
-#define YRESOLUTION 250
-#define YDATA_START 43
+#define YRESOLUTION 250 // line count, this is / 2
+#define YDATA_START 43 // line number
 #define YDATA_END (YDATA_START + YRESOLUTION)
-#define YDATA_NEXTFIELD 312
 
 // timings - these are here as consts because the division needs to process
 // a horizontal line is 64 microseconds
@@ -21,12 +20,12 @@ const uint32_t SAMPLES_BURST = 2.71 * DAC_FREQ / 1e6; // 180
 const uint32_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
 
 // where we are copying data to in the scanline
-const uint32_t SAMPLES_OFF = (1.025*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts
+const uint32_t SAMPLES_OFF = (5.504*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
 const uint32_t SAMPLES_PER_PIXEL = 16; // was 20
-const uint32_t SAMPLES_COLOUR = EFFECTIVE_XRESOLUTION * SAMPLES_PER_PIXEL; // 3320 points of the colour data to send
+const uint32_t SAMPLES_COLOUR = EFFECTIVE_XRESOLUTION * SAMPLES_PER_PIXEL; // 2688 points of the colour data to send
 
 //const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH + SAMPLES_OFF + <whatever is leftover at the end of the colour data>; // 816
-const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_PER_LINE - SAMPLES_COLOUR; // 936
+const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_PER_LINE - SAMPLES_COLOUR; // 1568
 const uint32_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_OFF; //    the samples at the end of signal right before front porch
 
 
@@ -162,7 +161,9 @@ class ColourPal {
             memset(line6even_A + SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_HSYNC);
 
             memset(line1_B + SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_GAP - SAMPLES_OFF, levelBlank, SAMPLES_GAP); // 1st gap
-            memset(line1_B + SAMPLES_COLOUR - SAMPLES_GAP + SAMPLES_FRONT_PORCH + SAMPLES_OFF, levelBlank, SAMPLES_GAP - SAMPLES_FRONT_PORCH - SAMPLES_OFF); // 2nd gap
+            if (SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH < SAMPLES_GAP) {
+                memset(line1_B + SAMPLES_COLOUR - SAMPLES_GAP + SAMPLES_FRONT_PORCH + SAMPLES_OFF, levelBlank, SAMPLES_GAP - SAMPLES_FRONT_PORCH - SAMPLES_OFF); // 2nd gap
+            }
 
             memset(line3_B, levelSync, SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_GAP - SAMPLES_OFF);
             memset(line3_B + SAMPLES_HALFLINE - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_OFF, levelSync, SAMPLES_SHORT_PULSE);
@@ -240,9 +241,10 @@ class ColourPal {
 
             // pointer to the buffer data we're displaying
             // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is divided by 2
-            int8_t *idx_y = buf_y + ((currentline - YDATA_START) / 2) * XRESOLUTION + startpixel;
-            int8_t *idx_u = buf_u + ((currentline - YDATA_START) / 2) * XRESOLUTION + startpixel;
-            int8_t *idx_v = buf_v + ((currentline - YDATA_START) / 2) * XRESOLUTION + startpixel;
+            // the currentline is +1 because we're preparing for the next line
+            int8_t *idx_y = buf_y + ((currentline - YDATA_START + 1) / 2) * XRESOLUTION + startpixel;
+            int8_t *idx_u = buf_u + ((currentline - YDATA_START + 1) / 2) * XRESOLUTION + startpixel;
+            int8_t *idx_v = buf_v + ((currentline - YDATA_START + 1) / 2) * XRESOLUTION + startpixel;
             uint32_t dmai2; // position in line
 
             // pointer to colour carrier 
@@ -264,7 +266,7 @@ class ColourPal {
                     // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
                     // original equation: levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
                     backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7);
-                    backbuffer_B[dmai2+SAMPLES_PER_PIXEL-1] = backbuffer_B[dmai2];
+                    backbuffer_B[dmai2+(SAMPLES_PER_PIXEL-1)] = backbuffer_B[dmai2];
                 }
 //                dmacpy(backbuffer_B+dmai2-1, backbuffer_B+i, 16);
             }
@@ -275,10 +277,9 @@ class ColourPal {
             // declare the backbuffer locally so it hopefully ends up in the best memory bank...
             uint8_t backbuffer_B[SAMPLES_COLOUR];
             memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
+            int32_t dmavfactor; // multiply v by +1 or -1 depending on even or odd line
 
             while (true) { // could set this to a bool running; so that we can stop?
-                int32_t dmavfactor = 0; // multiply v by +1 or -1 depending on even or odd line
-
                 dma_channel_set_trans_count(dma_channel_A, SAMPLES_SYNC_PORCHES / 4, false);
                 switch (currentline) {
                     case 1 ... 2:
@@ -305,19 +306,16 @@ class ColourPal {
                     case 6 ... YDATA_START-1:
                         if (currentline & 1) { // odd
                             dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
-                            dma_channel_wait_for_finish_blocking(dma_channel_A);
-                            dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-                            dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                         }
                         else {
                             dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
-                            dma_channel_wait_for_finish_blocking(dma_channel_A);
-                            dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
-                            dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                         }
+                        dma_channel_wait_for_finish_blocking(dma_channel_A);
+                        dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                        dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                         break;
 
-                    case YDATA_START ... YDATA_END: // in the absence of anything else, empty lines
+                    case YDATA_START ... YDATA_END-1: // this range is inclusive, so -1 to get the exact number of lines
                         if (currentline & 1) { // odd
                             dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
                             dmavfactor = 1; // next up is even
@@ -341,7 +339,7 @@ class ColourPal {
 
                         break;
 
-                    case YDATA_END+1 ...309:
+                    case YDATA_END ...309:
                         if (currentline & 1) { // odd
                             dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
                             dma_channel_wait_for_finish_blocking(dma_channel_A);
@@ -368,9 +366,9 @@ class ColourPal {
                         break;
                 }
 
-                // next up is a picture line, we know this if dmvfactor is -1 or 1
-                // otherwise based on line number
-                if (dmavfactor != 0 || (currentline >= YDATA_START - 1 && currentline < YDATA_END)) {
+                // next up is a picture line, for some reason it's faster to check
+                // based on line number than dmavfactor
+                if (currentline >= YDATA_START-1 && currentline <= YDATA_END-2) {
 
                     if (buf_y == NULL) {
                         // no buffer set so show colour bars instead
@@ -383,14 +381,16 @@ class ColourPal {
                     }
                     else {
                         // calculate data to show
-                        writepixels(dmavfactor, backbuffer_B, 19, 19+39); // X? us
+                        writepixels(dmavfactor, backbuffer_B, 19, 19+39); // 40 us
                     }
+                }
+                else { // nothing's happening
+//                   memset(backbuffer_B, levelBlank, SAMPLES_COLOUR);
                 }
 
                 gpio_put(18, led = !led); // this really should be flickering more? 
 
-                currentline++;
-                if (currentline == 313) {
+                if (++currentline == 313) {
                     currentline = 1;
                 }
 
