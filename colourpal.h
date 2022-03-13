@@ -1,6 +1,7 @@
 #include "testcardf.h"
 
-#define XRESOLUTION (332/2)
+#define XRESOLUTION 84
+#define EFFECTIVE_XRESOLUTION (XRESOLUTION*2) // stretch from anamorphic
 #define YRESOLUTION 250
 #define YDATA_START 43
 #define YDATA_END (YDATA_START + YRESOLUTION)
@@ -22,7 +23,7 @@ const uint32_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
 // where we are copying data to in the scanline
 const uint32_t SAMPLES_OFF = (1.025*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts
 const uint32_t SAMPLES_PER_PIXEL = 16; // was 20
-const uint32_t SAMPLES_COLOUR = XRESOLUTION * SAMPLES_PER_PIXEL; // 3320 points of the colour data to send
+const uint32_t SAMPLES_COLOUR = EFFECTIVE_XRESOLUTION * SAMPLES_PER_PIXEL; // 3320 points of the colour data to send
 
 //const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH + SAMPLES_OFF + <whatever is leftover at the end of the colour data>; // 816
 const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_PER_LINE - SAMPLES_COLOUR; // 936
@@ -85,7 +86,9 @@ class ColourPal {
         uint8_t colourbarsOdd_B[SAMPLES_COLOUR];
         uint8_t colourbarsEven_B[SAMPLES_COLOUR];
 
-        uint8_t* buf = NULL; // image data we are displaying
+        int8_t* buf_y = NULL; // image data we are displaying
+        int8_t* buf_u = NULL;
+        int8_t* buf_v = NULL;
         uint32_t currentline = 1;
         bool led = false;
 
@@ -218,8 +221,10 @@ class ColourPal {
             }
         }
 
-        void setBuf(uint8_t *in) {
-            buf = in;
+        void setBuf(int8_t *in_y, int8_t *in_u, int8_t *in_v) {
+            buf_y = in_y;
+            buf_u = in_u;
+            buf_v = in_v;
         }
 
 
@@ -228,13 +233,16 @@ class ColourPal {
         }
 
         inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backbuffer_B, uint32_t startpixel, uint32_t endpixel ) {
+//            gpio_put(26, 1); // for checking timing
 
             // current colour being processed
             int32_t y = 0, u = 0, v = 0;
 
             // pointer to the buffer data we're displaying
             // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is divided by 2
-            uint8_t *idx = buf + ((currentline - YDATA_START) / 2) * XRESOLUTION + startpixel;
+            int8_t *idx_y = buf_y + ((currentline - YDATA_START) / 2) * XRESOLUTION + startpixel;
+            int8_t *idx_u = buf_u + ((currentline - YDATA_START) / 2) * XRESOLUTION + startpixel;
+            int8_t *idx_v = buf_v + ((currentline - YDATA_START) / 2) * XRESOLUTION + startpixel;
             uint32_t dmai2; // position in line
 
             // pointer to colour carrier 
@@ -244,9 +252,9 @@ class ColourPal {
             for (uint32_t i = startpixel*(SAMPLES_PER_PIXEL-1); i < ((SAMPLES_PER_PIXEL-1)*endpixel); i += SAMPLES_PER_PIXEL-1) {
                 // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
                 // make y, u, v out of 127
-                y = ((*idx >> 1) & 0b01100000) + levelBlank; // would multiply by levelWhite, then divide by 128, so do nothing and leave it be
-                u = (((*idx >> 3) & 7) - 3) << 5;
-                v = dmavfactor * (((*(idx++) & 7) - 3) << 5);
+                y = (*idx_y++) + levelBlank; // would multiply by levelWhite, then divide by 128, so do nothing and leave it be
+                u = *(idx_u++);
+                v = dmavfactor * (*(idx_v++));
 
                 // for each pixel back to the start of the colour carrier
                 SIN3p = &SIN3[0];
@@ -258,6 +266,7 @@ class ColourPal {
                     backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
                 }
             }
+//            gpio_put(26, 0); // for checking timing
         }
 
         void __time_critical_func(loop)() {
@@ -320,9 +329,9 @@ class ColourPal {
                         dmacpy(screenbuffer_B, backbuffer_B, SAMPLES_COLOUR); // 3.2 us
 
                         // if there's a buffer to show, compute a few lines here while we wait
-                        if (buf != NULL) {
+                        if (buf_y != NULL) {
 //                            gpio_put(26, 1);
-                            writepixels(dmavfactor, backbuffer_B, 0, 24); // 20 us
+                            writepixels(dmavfactor, backbuffer_B, 0, 23); // 20 us
 //                            gpio_put(26, 0);
                         }
 
@@ -363,7 +372,7 @@ class ColourPal {
                 // otherwise based on line number
                 if (dmavfactor != 0 || (currentline >= YDATA_START - 1 && currentline < YDATA_END)) {
 
-                    if (buf == NULL) {
+                    if (buf_y == NULL) {
                         // no buffer set so show colour bars instead
                         if (currentline & 1) { // odd, next line is even
                             dmacpy(backbuffer_B, colourbarsEven_B, SAMPLES_COLOUR);
@@ -374,7 +383,7 @@ class ColourPal {
                     }
                     else {
                         // calculate data to show
-                        writepixels(dmavfactor, backbuffer_B, 24, 24+50); // 40 us
+                        writepixels(dmavfactor, backbuffer_B, 23, 23+48); // 40 us
                     }
                 }
 

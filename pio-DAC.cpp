@@ -88,7 +88,7 @@ void core1_entry() {
 
     ColourPal cp;
     cp.init();
-//    cp.setBuf(test_card_f);
+    cp.setBuf(testcardfpng_y, testcardfpng_u, testcardfpng_v);
     cp.start();
 
     // should never get here, cp.start() should loop

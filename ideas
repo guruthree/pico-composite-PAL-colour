@@ -1,3 +1,6 @@
+red is now green what?
+
+
 it seems like array access is what's killing speed
 
 slightly faster to read from RAM x3 than to do the bit shifts for yuv? (10%)
