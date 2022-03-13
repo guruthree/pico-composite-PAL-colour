@@ -30,20 +30,22 @@ clc
             u = -25;
          
 %             fprintf('%d %d %d to %d %d %d\n', r, g, b, y, u, v);
+
             out_y = sprintf('%s 0x%x,', out_y, y);
+
             if u >= 0
                 out_u = sprintf('%s 0x%x,', out_u, u);
             else
-%                 out_u = sprintf('%s 0x%x,', out_u, negativehex(u));
                 out_u = sprintf('%s -0x%x,', out_u, -u);
             end
+
             if v >= 0
                 out_v = sprintf('%s 0x%x,', out_v, v);
             else
-%                 out_v = sprintf('%s 0x%x,', out_v, negativehex(v));
                 out_v = sprintf('%s -0x%x,', out_v, -v);
             end
         end
+
         out_y = sprintf('%s\n', out_y);
         out_u = sprintf('%s\n', out_u);
         out_v = sprintf('%s\n', out_v);
@@ -59,15 +61,6 @@ clc
         y = 5 * r / 16 + 9 * g / 16 + b / 8;
         u = (r - y);
         v = 13 * (b - y) / 16;
-    end
-
-    % builtin fprintf does not deal with negative numbers
-    function x = negativehex(x)
-        x  = - x;
-        if x > 127
-            x = 127;
-        end
-        x = bitor(uint8(128-x), 0x80);
     end
 
 end

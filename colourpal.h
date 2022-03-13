@@ -263,7 +263,7 @@ class ColourPal {
                 for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) {
                     // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
                     // original equation: levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
-                    backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7) & 0xFF;
+                    backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7);
                 }
             }
 //            gpio_put(26, 0); // for checking timing
