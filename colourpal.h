@@ -1,5 +1,3 @@
-#include "testcardf.h"
-
 #define XRESOLUTION 64
 // #define XRESOLUTION 78 // without line doubling
 #define EFFECTIVE_XRESOLUTION (XRESOLUTION*2) // stretch from anamorphic
@@ -21,7 +19,8 @@ const uint32_t SAMPLES_BURST = 2.71 * DAC_FREQ / 1e6; // 180
 const uint32_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
 
 // where we are copying data to in the scanline
-const uint32_t SAMPLES_OFF = (3.9672*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
+const uint32_t SAMPLES_OFF = (8.24*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
+//const uint32_t SAMPLES_OFF = (1.025*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
 const uint32_t SAMPLES_PER_PIXEL = 16; // was 20
 const uint32_t SAMPLES_COLOUR = EFFECTIVE_XRESOLUTION * SAMPLES_PER_PIXEL; // 2688 points of the colour data to send
 
@@ -189,22 +188,24 @@ class ColourPal {
             memset( colourbarsOdd_B, levelBlank, SAMPLES_COLOUR);
             memset(colourbarsEven_B, levelBlank, SAMPLES_COLOUR);
 
-            for (uint32_t i = 0; i < SAMPLES_COLOUR; i++) {
+            // there's a descrepency between 16 samples per pixel = 16 and 15 actual samples
+            // so compenstate
+            for (uint32_t i = 0; i < SAMPLES_COLOUR - SAMPLES_PER_PIXEL * 8; i++) {
 
                 int32_t y, u, v;
-                if (i < (SAMPLES_COLOUR / 8))
+                if (i < (SAMPLES_COLOUR / 8) - SAMPLES_PER_PIXEL)
                     rgb2yuv(127, 127, 127, y, u, v);
-                else if (i < (2 * SAMPLES_COLOUR / 8))
+                else if (i < (2 * SAMPLES_COLOUR / 8) - SAMPLES_PER_PIXEL*2)
                     rgb2yuv(96, 96, 0, y, u, v);
-                else if (i < (3 * SAMPLES_COLOUR / 8))
+                else if (i < (3 * SAMPLES_COLOUR / 8) - SAMPLES_PER_PIXEL*3)
                     rgb2yuv(0, 96, 96, y, u, v);
-                else if (i < (4 * SAMPLES_COLOUR / 8))
+                else if (i < (4 * SAMPLES_COLOUR / 8) - SAMPLES_PER_PIXEL*4)
                     rgb2yuv(0, 96, 0, y, u, v);
-                else if (i < (5 * SAMPLES_COLOUR / 8))
+                else if (i < (5 * SAMPLES_COLOUR / 8) - SAMPLES_PER_PIXEL*5)
                     rgb2yuv(96, 0, 96, y, u, v);
-                else if (i < (6 * SAMPLES_COLOUR / 8))
+                else if (i < (6 * SAMPLES_COLOUR / 8) - SAMPLES_PER_PIXEL*6)
                     rgb2yuv(96, 0, 0, y, u, v);
-                else if (i < (7 * SAMPLES_COLOUR / 8))
+                else if (i < (7 * SAMPLES_COLOUR / 8) - SAMPLES_PER_PIXEL*7)
                     rgb2yuv(0, 0, 96, y, u, v);
                 else
 //                    rgb2yuv(0, 0, 0, y, u, v);
@@ -256,7 +257,7 @@ class ColourPal {
 
                 // for each pixel back to the start of the colour carrier
                 SIN3p = &SIN3[0];
-                COS3p = &SIN3[9];
+                COS3p = &SIN3[4];
 
                 for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) {
                     // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
@@ -399,6 +400,7 @@ class ColourPal {
                 if (++currentline == 313) {
                     currentline = 1;
                     gpio_put(18, led = !led); // this really should be flickering more? 
+                    memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR);
                 }
 
             } // while (true)

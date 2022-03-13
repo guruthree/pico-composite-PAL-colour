@@ -27,9 +27,10 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
 }
 
 #include "colourpal.h"
-//#include "testcardf.h"
+#include "testcardf.h"
 #include "mycard.h"
 
+ColourPal cp;
 
 void core1_entry();
 
@@ -78,21 +79,28 @@ int main() {
 
     multicore_launch_core1(core1_entry);
 
+    uint8_t at = 0;
     while (1) {
 
         // do something cool here
-        tight_loop_contents();
-
+        if (at == 0) {
+            cp.setBuf(NULL);
+        }
+        else if (at == 1) {
+            cp.setBuf(testcardfpng);
+        }
+        else if (at == 2) {
+            cp.setBuf(mycardpng);
+        }
+        if (++at == 3) at = 0;
+        sleep_ms(2000);
     }
 }
 
 // do all composite processing on the second core
 void core1_entry() {
 
-    ColourPal cp;
     cp.init();
-//    cp.setBuf(testcardfpng);
-    cp.setBuf(mycardpng);
     cp.start();
 
     // should never get here, cp.start() should loop
