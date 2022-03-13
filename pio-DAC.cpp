@@ -27,6 +27,9 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
 }
 
 #include "colourpal.h"
+//#include "testcardf.h"
+#include "mycard.h"
+
 
 void core1_entry();
 
@@ -88,7 +91,8 @@ void core1_entry() {
 
     ColourPal cp;
     cp.init();
-    cp.setBuf(testcardfpng);
+//    cp.setBuf(testcardfpng);
+    cp.setBuf(mycardpng);
     cp.start();
 
     // should never get here, cp.start() should loop

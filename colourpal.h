@@ -1,6 +1,7 @@
 #include "testcardf.h"
 
-#define XRESOLUTION 84
+#define XRESOLUTION 64
+// #define XRESOLUTION 78 // without line doubling
 #define EFFECTIVE_XRESOLUTION (XRESOLUTION*2) // stretch from anamorphic
 #define YRESOLUTION 250 // line count, this is / 2
 #define YDATA_START 43 // line number
@@ -261,7 +262,7 @@ class ColourPal {
                     // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
                     // original equation: levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
                     backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7);
-//                    backbuffer_B[dmai2+(SAMPLES_PER_PIXEL-1)] = backbuffer_B[dmai2];
+                    backbuffer_B[dmai2+(SAMPLES_PER_PIXEL-1)] = backbuffer_B[dmai2]; // line doubliong
                 }
 //                dmacpy(backbuffer_B+dmai2-1, backbuffer_B+i, 16);
             }
@@ -308,8 +309,8 @@ class ColourPal {
                             dmavfactor = -1; // next up is odd
                         }
                         if (currentline == YDATA_START-1 && buf != NULL) {
-//                            writepixels(dmavfactor, backbuffer_B, 0, 20); // 20 us
-                            writepixels(dmavfactor, backbuffer_B, 0, 26); // 20 us
+                            writepixels(dmavfactor, backbuffer_B, 0, 30);
+//                            writepixels(dmavfactor, backbuffer_B, 0, 26); // without line doubling
                         }
                         dma_channel_wait_for_finish_blocking(dma_channel_A);
                         dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
@@ -331,8 +332,8 @@ class ColourPal {
 
                         // if there's a buffer to show, compute a few lines here while we wait
                         if (buf != NULL) {
-//                            writepixels(dmavfactor, backbuffer_B, 0, 20); // 20 us
-                            writepixels(dmavfactor, backbuffer_B, 0, 26); // 20 us
+                            writepixels(dmavfactor, backbuffer_B, 0, 32); // 28 us
+//                            writepixels(dmavfactor, backbuffer_B, 0, 26); // 20 us (without line doubling)
                         }
 
                         dma_channel_wait_for_finish_blocking(dma_channel_A); // 24 us
@@ -383,8 +384,8 @@ class ColourPal {
                     }
                     else {
                         // calculate data to show
-//                        writepixels(dmavfactor, backbuffer_B, 20, 20+43); // 40 us
-                        writepixels(dmavfactor, backbuffer_B, 26, 26+52); // 40 us
+                        writepixels(dmavfactor, backbuffer_B, 32, 32+32); // 30 us
+//                        writepixels(dmavfactor, backbuffer_B, 26, 26+52); // 40 us (wihtout line doubling)
                     }
                 }
                 else { // nothing's happening
