@@ -1,11 +1,14 @@
-it seems like array access is what's killing speed
-
 slightly faster to read from RAM x3 than to do the bit shifts for yuv? (10%)
 so store in yuv? 
 84x125 anamorphic
 effective & actual xresolution?
+yes shows more, but not as much as I hoped
+    58 out of 84 pixels
+    could go 3 to 1 anamorphic (56x84?), but such low detail :(
 
 
+
+it seems like array access is what's killing speed
 
 30 samples/pixel?
 use dma to copy the 15 repeating pattern?

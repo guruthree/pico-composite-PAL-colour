@@ -249,7 +249,7 @@ class ColourPal {
             int32_t *SIN3p;
             int32_t *COS3p;
 
-            for (uint32_t i = startpixel*(SAMPLES_PER_PIXEL-1); i < ((SAMPLES_PER_PIXEL-1)*endpixel); i += SAMPLES_PER_PIXEL-1) {
+            for (uint32_t i = startpixel*2*(SAMPLES_PER_PIXEL-1); i < (2*(SAMPLES_PER_PIXEL-1)*endpixel); i += 2*(SAMPLES_PER_PIXEL-1)) {
                 // 2 bits y, 1 bit sign, 2 bits u, 1 bit sign, 2 bits v
                 // make y, u, v out of 127
                 y = (*idx_y++) + levelBlank; // would multiply by levelWhite, then divide by 128, so do nothing and leave it be
@@ -264,7 +264,9 @@ class ColourPal {
                     // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
                     // original equation: levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
                     backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7);
+                    backbuffer_B[dmai2+SAMPLES_PER_PIXEL-1] = backbuffer_B[dmai2];
                 }
+//                dmacpy(backbuffer_B+dmai2-1, backbuffer_B+i, 16);
             }
 //            gpio_put(26, 0); // for checking timing
         }
@@ -330,9 +332,7 @@ class ColourPal {
 
                         // if there's a buffer to show, compute a few lines here while we wait
                         if (buf_y != NULL) {
-//                            gpio_put(26, 1);
-                            writepixels(dmavfactor, backbuffer_B, 0, 23); // 20 us
-//                            gpio_put(26, 0);
+                            writepixels(dmavfactor, backbuffer_B, 0, 19); // X? us
                         }
 
                         dma_channel_wait_for_finish_blocking(dma_channel_A); // 24 us
@@ -383,7 +383,7 @@ class ColourPal {
                     }
                     else {
                         // calculate data to show
-                        writepixels(dmavfactor, backbuffer_B, 23, 23+48); // 40 us
+                        writepixels(dmavfactor, backbuffer_B, 19, 19+39); // X? us
                     }
                 }
 
