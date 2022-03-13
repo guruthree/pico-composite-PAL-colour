@@ -26,8 +26,6 @@ clc
             y = int8(y);
             u = int8(u);
             v = int8(v);
-
-            u = -25;
          
 %             fprintf('%d %d %d to %d %d %d\n', r, g, b, y, u, v);
 
