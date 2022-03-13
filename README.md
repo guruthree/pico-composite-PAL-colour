@@ -1,6 +1,11 @@
 # pico-composite-PAL-colour #
 
-Trying to get the PIO to generate a colour PAL composite video signal, using only a [resistor ladder](https://en.wikipedia.org/wiki/Resistor_ladder) digital-to-analogue converter (DAC).
+Trying to get the [Raspberry Pi RP2040](https://www.raspberrypi.com/documentation/microcontrollers/rp2040.html) chip's PIO to generate a colour PAL composite video signal, using only a [resistor ladder](https://en.wikipedia.org/wiki/Resistor_ladder) digital-to-analogue converter (DAC).
+
+**WARNING: THERE IS A CHANCE THIS SOFTWARE MAY DAMANGED YOUR PICO. I TAKE NO RESPONSIBILITY.**
+I'm running the RP2040 at 266 MHz. This is a 200% overclock. The clock divider on the PIO is about 4. That is a lot of data to process (4256 bytes) in not a very long period of time (64 microseconds). I have a sneaking suspicion that the only reason it's working is because running at high overclock so long may have permanently damaged the RP2040 chip. It no longer registers when plugged into some computers. The GPIO seems to have 5V coming out.
+
+As for my specific hardware, I'm using a [Pimoroni Tiny2040](https://shop.pimoroni.com/products/tiny-2040?variant=39560012300371). The resistor DAC is of the simpler (read: less precise) single resistor variety. It consists of one each of a 39k, 22k, 10k, 5.6k, 2.7k, 1.2k, 680, and 330 Ω resistors hooked up to GPIO pins 0 through 7. That DAC, when combined with the 75 Ω termination load of a composite signal should have a 0-1 V range. When making it I did not know colour PAL should have a peak voltage of 1.25 V, so oops, please design your own resistor DAC to the appropriate voltage. To calculate, you can use 1.25 V = 3.3 V * 75 Ω / (75 Ω + sum of 8 resistor values each roughly doubling). You will ideally want 1 V to be produced when a value of 128 is written to the DAC.
 
 ## Resources ##
 
@@ -22,7 +27,6 @@ Trying to get the PIO to generate a colour PAL composite video signal, using onl
 * https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf
 * https://datasheets.raspberrypi.com/pico/raspberry-pi-pico-c-sdk.pdf
 * https://raspberrypi.github.io/pico-sdk-doxygen/
-* https://shop.pimoroni.com/products/tiny-2040?variant=39560012300371
 
 #### DMA ####
 
