@@ -131,18 +131,30 @@ int main() {
 bool led = true;
 uint8_t at = 0;
 
-#define NUM_VERTEX 6
+const uint8_t NUM_VERTEX = 4;
 
 // note screen space is 60x120
-int8_t x[NUM_VERTEX] = {-10,  10, 10, -10, -10, 10};
-int8_t y[NUM_VERTEX] = {-10, -10, 10, -10,  10, 10};
+//int8_t x[NUM_VERTEX] = {-10,  10, 10, -10, -10, 10};
+//int8_t y[NUM_VERTEX] = {-10, -10, 10, -10,  10, 10};
 
 // transformed
-uint8_t xt[NUM_VERTEX];
-uint8_t yt[NUM_VERTEX];
+//uint8_t xt[NUM_VERTEX];
+//uint8_t yt[NUM_VERTEX];
 
-memset(xt, 0, sizeof(uint8_t)*NUM_VERTEX);
-memset(yt, 0, sizeof(uint8_t)*NUM_VERTEX);
+//memset(xt, 0, sizeof(uint8_t)*NUM_VERTEX);
+//memset(yt, 0, sizeof(uint8_t)*NUM_VERTEX);
+
+Vector3 v[NUM_VERTEX];
+v[0] = {-10, -10, 0};
+v[1] = { 10, -10, 0};
+v[2] = { 10,  10, 0};
+v[3] = {-10,  10, 0};
+
+
+Vector3 vt[NUM_VERTEX];
+
+const uint8_t NUM_TRIS = 2;
+uint8_t triangles[NUM_TRIS*3] = {0, 1, 2, 2, 3, 0};
 
 float angle = 0;
 
@@ -171,16 +183,29 @@ float angle = 0;
 
 angle += 0.1f;
 
+Matrix3 rot = Matrix3::getRotationMatrix(0, 0, angle);
+
 for (uint8_t i = 0; i < NUM_VERTEX; i++) {
-    xt[i] =  (x[i] * cosf(angle) + y[i] * sinf(angle))/2 + 30;
-    yt[i] = -x[i] * sinf(angle) + y[i] * cosf(angle) + 60;
+//    xt[i] =  (x[i] * cosf(angle) + y[i] * sinf(angle))/2 + 30;
+//    yt[i] = -x[i] * sinf(angle) + y[i] * cosf(angle) + 60;
+    vt[i] = rot.preMultiply(v[i]);
+    vt[i].x = (vt[i].x/2) + 30;
+    vt[i].y += 60;
 }
 //fillTriangle(tbuf, xt[0], yt[0], xt[1], yt[1], xt[2], yt[2], 0, 100, 0);
 
-
-for (uint8_t i = 0; i < NUM_VERTEX; i+=3) {
-    fillTriangle(tbuf, xt[i], yt[i], xt[i+1], yt[i+1], xt[i+2], yt[i+2], 0, 100, 0);
+for (uint8_t i = 0; i < NUM_TRIS*3; i+=3) {
+    fillTriangle(tbuf, 
+        vt[triangles[i]].x, vt[triangles[i]].y, 
+        vt[triangles[i+1]].x, vt[triangles[i+1]].y, 
+        vt[triangles[i+2]].x, vt[triangles[i+2]].y, 
+        100, 100, 0);
 }
+
+
+//for (uint8_t i = 0; i < NUM_VERTEX; i+=3) {
+//    fillTriangle(tbuf, xt[i], yt[i], xt[i+1], yt[i+1], xt[i+2], yt[i+2], 0, 100, 0);
+//}
 
 
 sleep_ms(20);
