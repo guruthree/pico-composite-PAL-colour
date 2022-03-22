@@ -37,6 +37,7 @@
 #include "hardware/clocks.h"
 #include "dac.pio.h"
 
+// replace with const?
 #define CLOCK_SPEED 266e6
 #define CLOCK_DIV 3.99974249778092305618 // clock divided by carrier divided by 15
 #define DAC_FREQ (CLOCK_SPEED / CLOCK_DIV) // this should be
@@ -53,10 +54,19 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
 }
 
 #include "colourpal.h"
-#include "testcardf.h"
-#include "mycard.h"
+//#include "testcardf.h"
+//#include "mycard.h"
+#include "lbm.h"
+#include "jet.h"
 
 ColourPal cp;
+LBM lbm;
+
+// one byte y, one byte u, one byte v, repeating for 125x64, line by line
+#define BUF_SIZE (XRESOLUTION*YRESOLUTION/2*3)
+//#define BUF_SIZE (XRESOLUTION*128/2*3)
+int8_t buf0[BUF_SIZE];
+int8_t buf1[BUF_SIZE];
 
 void core1_entry();
 
@@ -105,11 +115,74 @@ int main() {
 
     multicore_launch_core1(core1_entry);
 
-    uint8_t at = 0;
+    lbm.init();
+    lbm.cylinder(14);
+//    lbm.cylinder(10, 4);
+//    lbm.cylinder(20, 16);
+
+    memset(buf0, 0, BUF_SIZE);
+    memset(buf1, 0, BUF_SIZE);
+    bool buf = false; // buf0
+    int8_t *tbuf;
+//    cp.setBuf(buf0);
+
+bool led = true;
+uint8_t at = 0;
+
     while (1) {
+//        gpio_put(19, led = !led);
+
+//        lbm.timestep();
+//        if (lbm.getNumberOfTimeSteps() % 10 == 0) {
+            lbm.timestep(true);
+
+            if (buf) {
+                tbuf = buf1;
+            }
+            else {
+                tbuf = buf0;
+            }
+            buf = !buf;
+            memset(tbuf, 0, BUF_SIZE);
+
+            uint8_t speed;
+
+            uint8_t xat = 0, yat = 0;
+//            for (uint8_t y = 0; y < lbm.NY; y++) {
+            for (uint8_t y = 2; y < lbm.NY-2; y++) {
+                xat = 0;
+                for (uint8_t x = 0; x < lbm.NX; x++) {
+                    if (!lbm.BOUND[x][y]) {
+                        speed = lbm.getSpeed(x, y) * 63.0 / lbm.maxVal;
+                        speed > 63 ? speed = 63 : 1;
+                        setPixelRGB(tbuf, xat, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
+                        setPixelRGB(tbuf, xat, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
+                        setPixelRGB(tbuf, xat, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
+                        setPixelRGB(tbuf, xat, yat+3, jet[speed][0], jet[speed][1], jet[speed][2]);
+
+                        setPixelRGB(tbuf, xat+1, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
+                        setPixelRGB(tbuf, xat+1, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
+                        setPixelRGB(tbuf, xat+1, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
+                        setPixelRGB(tbuf, xat+1, yat+3, jet[speed][0], jet[speed][1], jet[speed][2]);
+                    }
+//                    xat++;
+                    xat += 2;
+                }
+//                yat += 2;
+                yat += 4;
+            }
+
+            cp.setBuf(tbuf);
+//            sleep_ms(20); // 50 Hz?
+
+//at += 1;
+//if (at >= 127) at = 0;
+
+//        } // time-step
+//        tight_loop_contents();
 
         // do something cool here
-        if (at == 0) {
+/*        if (at == 0) {
             cp.setBuf(NULL);
         }
         else if (at == 1) {
@@ -118,8 +191,11 @@ int main() {
         else if (at == 2) {
             cp.setBuf(mycardpng);
         }
-        if (++at == 3) at = 0;
-        sleep_ms(5000);
+        if (++at == 3) at = 0; */
+//        sleep_ms(500);
+
+
+        tight_loop_contents();
     }
 }
 
