@@ -28,6 +28,7 @@ target_link_libraries(pio-DAC
     hardware_dma
     pico_malloc
 	pico_mem_ops
+    pico_float
 )
 pico_add_extra_outputs(pio-DAC)
 
