@@ -172,28 +172,46 @@ const uint8_t NUM_VERTEX = 8*NUM_CUBES;
 
 Vector3 v[NUM_VERTEX];
 for (uint8_t i = 0; i < NUM_VERTEX; i+=8) {
-    v[i+0] = {-20, -20,  20};
-    v[i+1] = { 20, -20,  20};
-    v[i+2] = { 20,  20,  20};
-    v[i+3] = {-20,  20,  20};
-    v[i+4] = {-20, -20, -20};
-    v[i+5] = { 20, -20, -20};
-    v[i+6] = { 20,  20, -20};
-    v[i+7] = {-20,  20, -20};
+    v[i+0] = {-20, -20,  20}; // front bottom left
+    v[i+1] = { 20, -20,  20}; // front bottom right
+    v[i+2] = { 20,  20,  20}; // front top right
+    v[i+3] = {-20,  20,  20}; // front top left
+    v[i+4] = {-20, -20, -20}; // back bottom left
+    v[i+5] = { 20, -20, -20}; // back bottom right
+    v[i+6] = { 20,  20, -20}; // back top right 
+    v[i+7] = {-20,  20, -20}; // back top left
 }
 
 
 Vector3 vt[NUM_VERTEX];
 
-const uint8_t NUM_TRIS = 4;
+const uint8_t NUM_TRIS = 12;
 uint8_t triangles[NUM_TRIS*3] = {0, 1, 2, 
                                  2, 3, 0,
                                  4, 5, 6, 
-                                 6, 7, 4};
+                                 6, 7, 4,
+                                 0, 3, 4,
+                                 4, 7, 3,
+                                 1, 2, 5,
+                                 5, 6, 2,
+                                 2, 3, 6,
+                                 6, 3, 7,
+                                 1, 0, 5,
+                                 5, 0, 4
+                                 };
 uint8_t color[NUM_TRIS*3] = {100,   0,   0, 
                              100,   0,   0, 
                                0,   0, 100, 
-                               0,   0, 100};
+                               0,   0, 100,
+                               0, 100,   0,
+                               0, 100,   0,
+                             100, 100,   0,
+                             100, 100,   0,
+                             0, 100,  100,
+                             0, 100,  100,
+                             100, 0,  100,
+                             100, 0,  100
+                               };
 
 TriangleDepth tridepths[NUM_TRIS];
 
@@ -207,7 +225,7 @@ for (uint8_t i = 0; i < NUM_CUBES; i++ ) {
 }
 
 float xangle = 0, yangle = 0, zangle = 0;
-float xangle2 = 0, yangle2 = 0, zangle2 = 0;
+//float xangle2 = 0, yangle2 = 0, zangle2 = 0;
 
     while (1) {
 //        gpio_put(19, led = !led);
@@ -223,7 +241,7 @@ float xangle2 = 0, yangle2 = 0, zangle2 = 0;
                 tbuf = buf0;
             }
             buf = !buf;
-            memset(tbuf, 0, BUF_SIZE);
+            memset(tbuf, 20, BUF_SIZE);
 
 
 
@@ -232,14 +250,15 @@ float xangle2 = 0, yangle2 = 0, zangle2 = 0;
 //fillTriangle(tbuf, 10, 30, 30, 33, 25, 41, 0, 0, 100);
 
 
-//zangle += 0.02f;
-xangle += 0.1f;
+yangle += 0.02f;
+xangle += 0.05f;
+zangle += 0.001f;
 
-yangle2 += 0.01f;
+//yangle2 += 0.01f;
 
 //Matrix3 rot = Matrix3::getPerspMatrix({1,1,0.1}).multiply(Matrix3::getRotationMatrix(xangle, yangle, zangle));
 Matrix3 rot = Matrix3::getRotationMatrix(xangle, yangle, zangle);
-Matrix3 orbit = Matrix3::getRotationMatrix(xangle2, yangle2, zangle2);
+//Matrix3 orbit = Matrix3::getRotationMatrix(xangle2, yangle2, zangle2);
 
 for (uint8_t i = 0; i < NUM_VERTEX; i++) {
 //    xt[i] =  (x[i] * cosf(angle) + y[i] * sinf(angle))/2 + 30;
@@ -249,10 +268,10 @@ for (uint8_t i = 0; i < NUM_VERTEX; i++) {
 //vt[i].x -= 10;
 //vt[i].y += 30;
 //vt[i] = vt[i].add(centres[i/8]);
-vt[i] = vt[i].add(orbit.preMultiply(centres[i/8]));
-vt[i].z = vt[i].z - 40;
+//vt[i] = vt[i].add(orbit.preMultiply(centres[i/8]));
+//vt[i].z = vt[i].z - 40;
 
-    vt[i] = vt[i].scale(20.0f / (-vt[i].z/2.0 + 40.0f));
+    vt[i] = vt[i].scale(40.0f / (-vt[i].z/2.0 + 40.0f));
 
     vt[i].x = (vt[i].x/2) + 30;
     vt[i].y += 60;
@@ -262,6 +281,7 @@ vt[i].z = vt[i].z - 40;
 // calculate distance away
 for (uint8_t i = 0; i < NUM_TRIS*3; i+=3) {
     tridepths[i/3].depth = (vt[triangles[i]].z + vt[triangles[i+1]].z + vt[triangles[i+2]].z) / 3;
+//    tridepths[i/3].depth = MIN(MIN(vt[triangles[i]].z, vt[triangles[i+1]].z), vt[triangles[i+2]].z);
     tridepths[i/3].index = i/3;
 }
 
