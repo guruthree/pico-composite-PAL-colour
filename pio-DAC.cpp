@@ -217,14 +217,17 @@ TriangleDepth tridepths[NUM_TRIS];
 
 Vector3 centres[NUM_CUBES];
 seed_random_from_rosc();
-for (uint8_t i = 0; i < NUM_CUBES; i++ ) {
-    centres[i] = { float(rand() % 20) - 10.0f,
-                   float(rand() % 40) - 20.0f,
-                   -float(rand() % 80) };
-//centres[i] = {-10, -30, 0};
-}
+//for (uint8_t i = 0; i < NUM_CUBES; i++ ) {
+//    centres[i] = { float(rand() % 20) - 10.0f,
+//                   float(rand() % 40) - 20.0f,
+//                   -float(rand() % 80) };
+centres[0] = {0, 0, 0};
+//}
 
 float xangle = 0, yangle = 0, zangle = 0;
+float dx = 0.10f;
+float dy = 0.50f;
+float dz = -1.0f;
 //float xangle2 = 0, yangle2 = 0, zangle2 = 0;
 
     while (1) {
@@ -241,18 +244,25 @@ float xangle = 0, yangle = 0, zangle = 0;
                 tbuf = buf0;
             }
             buf = !buf;
-            memset(tbuf, 20, BUF_SIZE);
-
-
-
-
-//drawLineRGB(tbuf, 10, 10, 15, 30, 127, 0, 0);
-//fillTriangle(tbuf, 10, 30, 30, 33, 25, 41, 0, 0, 100);
-
+            memset(tbuf, 20, BUF_SIZE); // back to 0 for black
 
 yangle += 0.02f;
 xangle += 0.05f;
 zangle += 0.001f;
+
+centres[0].x += dx;
+centres[0].y += dy;
+centres[0].z += dz;
+
+if (abs(centres[0].x) > 15) {
+    dx = -dx;
+}
+if (abs(centres[0].y) > 18) {
+    dy = -dy;
+}
+if (centres[0].z < -100 || centres[0].z >= 0) {
+    dz = -dz;
+}
 
 //yangle2 += 0.01f;
 
@@ -267,14 +277,14 @@ for (uint8_t i = 0; i < NUM_VERTEX; i++) {
 
 //vt[i].x -= 10;
 //vt[i].y += 30;
-//vt[i] = vt[i].add(centres[i/8]);
+vt[i] = vt[i].add(centres[i/8]);
 //vt[i] = vt[i].add(orbit.preMultiply(centres[i/8]));
 //vt[i].z = vt[i].z - 40;
 
     vt[i] = vt[i].scale(40.0f / (-vt[i].z/2.0 + 40.0f));
 
-    vt[i].x = (vt[i].x/2) + 30;
-    vt[i].y += 60;
+    vt[i].x = (vt[i].x/2) + 32;
+    vt[i].y += 62;
 }
 //fillTriangle(tbuf, xt[0], yt[0], xt[1], yt[1], xt[2], yt[2], 0, 100, 0);
 
