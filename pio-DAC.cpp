@@ -53,6 +53,18 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
     dma_channel_set_write_addr(dma_chan32, NULL, false);
 }
 
+struct TriangleDepth {
+    float depth;
+    uint8_t index;
+};
+int compare (const void* _a, const void* _b) {
+    TriangleDepth *a = (TriangleDepth*)_a;
+    TriangleDepth *b = (TriangleDepth*)_b;
+    if (a->depth == b->depth) return 0;
+    else if (a->depth < b->depth) return -1;
+    else return 1;
+}
+
 #include "colourpal.h"
 //#include "testcardf.h"
 //#include "mycard.h"
@@ -131,32 +143,36 @@ int main() {
 bool led = true;
 uint8_t at = 0;
 
-const uint8_t NUM_VERTEX = 4;
-
-// note screen space is 60x120
-//int8_t x[NUM_VERTEX] = {-10,  10, 10, -10, -10, 10};
-//int8_t y[NUM_VERTEX] = {-10, -10, 10, -10,  10, 10};
-
-// transformed
-//uint8_t xt[NUM_VERTEX];
-//uint8_t yt[NUM_VERTEX];
-
-//memset(xt, 0, sizeof(uint8_t)*NUM_VERTEX);
-//memset(yt, 0, sizeof(uint8_t)*NUM_VERTEX);
+const uint8_t NUM_VERTEX = 8;
 
 Vector3 v[NUM_VERTEX];
-v[0] = {-10, -10, 0};
-v[1] = { 10, -10, 0};
-v[2] = { 10,  10, 0};
-v[3] = {-10,  10, 0};
+v[0] = {-20, -20,  20};
+v[1] = { 20, -20,  20};
+v[2] = { 20,  20,  20};
+v[3] = {-20,  20,  20};
+v[4] = {-20, -20, -20};
+v[5] = { 20, -20, -20};
+v[6] = { 20,  20, -20};
+v[7] = {-20,  20, -20};
 
 
 Vector3 vt[NUM_VERTEX];
 
-const uint8_t NUM_TRIS = 2;
-uint8_t triangles[NUM_TRIS*3] = {0, 1, 2, 2, 3, 0};
+const uint8_t NUM_TRIS = 4;
+uint8_t triangles[NUM_TRIS*3] = {0, 1, 2, 
+                                 2, 3, 0,
+                                 4, 5, 6, 
+                                 6, 7, 4};
+uint8_t color[NUM_TRIS*3] = {100,   0,   0, 
+                             100,   0,   0, 
+                               0,   0, 100, 
+                               0,   0, 100};
 
-float angle = 0;
+TriangleDepth tridepths[NUM_TRIS];
+
+float xangle = 0;
+float yangle = 0;
+float zangle = 0;
 
     while (1) {
 //        gpio_put(19, led = !led);
@@ -181,9 +197,10 @@ float angle = 0;
 //fillTriangle(tbuf, 10, 30, 30, 33, 25, 41, 0, 0, 100);
 
 
-angle += 0.1f;
+zangle += 0.02f;
+xangle += 0.002;
 
-Matrix3 rot = Matrix3::getRotationMatrix(0, 0, angle);
+Matrix3 rot = Matrix3::getRotationMatrix(xangle, yangle, zangle);
 
 for (uint8_t i = 0; i < NUM_VERTEX; i++) {
 //    xt[i] =  (x[i] * cosf(angle) + y[i] * sinf(angle))/2 + 30;
@@ -194,12 +211,18 @@ for (uint8_t i = 0; i < NUM_VERTEX; i++) {
 }
 //fillTriangle(tbuf, xt[0], yt[0], xt[1], yt[1], xt[2], yt[2], 0, 100, 0);
 
+// calculate distance away
+for (uint8_t i = 0; i < NUM_TRIS*3; i+=3) {
+    tridepths[i/3].depth = (vt[triangles[i]].z + vt[triangles[i+1]].z + vt[triangles[i+2]].z) / 3;
+    tridepths[i/3].index = i;
+}
+
 for (uint8_t i = 0; i < NUM_TRIS*3; i+=3) {
     fillTriangle(tbuf, 
         vt[triangles[i]].x, vt[triangles[i]].y, 
         vt[triangles[i+1]].x, vt[triangles[i+1]].y, 
         vt[triangles[i+2]].x, vt[triangles[i+2]].y, 
-        100, 100, 0);
+        color[i], color[i+1], color[i+2]);
 }
 
 
