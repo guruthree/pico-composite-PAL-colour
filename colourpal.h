@@ -24,6 +24,7 @@
  *
  */
 
+// replace with const int?
 #define XRESOLUTION 64
 // #define XRESOLUTION 78 // without line doubling
 #define EFFECTIVE_XRESOLUTION (XRESOLUTION*2) // stretch from anamorphic
@@ -34,6 +35,7 @@
 // timings - these are here as consts because the division needs to process
 // a horizontal line is 64 microseconds
 // this HAS to be divisible by 4 to use 32-bit DMA transfers
+// replace with static constexpr?
 const uint32_t SAMPLES_PER_LINE = 64 * DAC_FREQ / 1e6; // 4256
 const uint32_t SAMPLES_GAP = 4.693 * DAC_FREQ / 1e6; // 312
 const uint32_t SAMPLES_SHORT_PULSE = 2.347 * DAC_FREQ / 1e6; // 156
@@ -63,6 +65,16 @@ void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int32_t &v
     y = 5 * r / 16 + 9 * g / 16 + b / 8; // luminance
     u = (r - y);
     v = 13 * (b - y) / 16;
+}
+
+void setPixelRGB(int8_t *buf, uint8_t xcoord, uint8_t ycoord, uint8_t r, uint8_t g, uint8_t b) {
+    int32_t y = 0, u = 0, v = 0;
+    rgb2yuv(r, g, b, y, u, v);
+
+    int8_t *idx = buf + (ycoord * XRESOLUTION + xcoord) * 3;
+    *idx = y;
+    *(idx+1) = u;
+    *(idx+2) = v;
 }
 
 // the line of colour data being displayed
@@ -250,6 +262,8 @@ class ColourPal {
         }
 
         void setBuf(int8_t *in) {
+            while (currentline > YDATA_START-1)
+                sleep_us(60);
             buf = in;
         }
 
@@ -259,6 +273,7 @@ class ColourPal {
         }
 
         inline void __time_critical_func(writepixels)(int32_t dmavfactor, uint8_t *backbuffer_B, uint32_t startpixel, uint32_t endpixel ) {
+            // thanks to @Blayzeing and @ZodiusInfuser for some help with optimising this section
 //            gpio_put(26, 1); // for checking timing
 
             // current colour being processed
@@ -359,7 +374,7 @@ class ColourPal {
 
                         // if there's a buffer to show, compute a few lines here while we wait
                         if (buf != NULL) {
-                            writepixels(dmavfactor, backbuffer_B, 0, 32); // 28 us
+                            writepixels(dmavfactor, backbuffer_B, 0, 31); // 28 us
 //                            writepixels(dmavfactor, backbuffer_B, 0, 26); // 20 us (without line doubling)
                         }
 
@@ -411,7 +426,7 @@ class ColourPal {
                     }
                     else {
                         // calculate data to show
-                        writepixels(dmavfactor, backbuffer_B, 32, 32+32); // 30 us
+                        writepixels(dmavfactor, backbuffer_B, 31, 31+31); // 30 us
 //                        writepixels(dmavfactor, backbuffer_B, 26, 26+52); // 40 us (wihtout line doubling)
                     }
                 }
