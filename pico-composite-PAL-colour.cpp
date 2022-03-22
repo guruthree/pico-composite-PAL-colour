@@ -76,8 +76,7 @@ int8_t buf1[BUF_SIZE];
 //#include "testcardf.h"
 //#include "raspberrypi.h"
 #include "renderlbm.h"
-#include "discountadafruitgfx.h"
-#include "vectormath.h"
+#include "cube.h"
 
 ColourPal cp;
 LBM lbm;
@@ -126,11 +125,15 @@ int main() {
                           false // start immediately
     );
 
+    seed_random_from_rosc();
 
     multicore_launch_core1(core1_entry);
 
     lbm.init();
     lbm.cylinder(14);
+
+    TriangleRenderer tr;
+    Cube cube(40);
 
     memset(buf0, 0, BUF_SIZE);
     memset(buf1, 0, BUF_SIZE);
@@ -138,73 +141,8 @@ int main() {
     int8_t *tbuf;
 
 
-seed_random_from_rosc();
-
-bool led = true;
-uint8_t at = 0;
-
-const uint8_t NUM_CUBES = 1;
-const uint8_t NUM_VERTEX = 8*NUM_CUBES;
-
-Vector3 v[NUM_VERTEX];
-for (uint8_t i = 0; i < NUM_VERTEX; i+=8) {
-    v[i+0] = {-20, -20,  20}; // front bottom left
-    v[i+1] = { 20, -20,  20}; // front bottom right
-    v[i+2] = { 20,  20,  20}; // front top right
-    v[i+3] = {-20,  20,  20}; // front top left
-    v[i+4] = {-20, -20, -20}; // back bottom left
-    v[i+5] = { 20, -20, -20}; // back bottom right
-    v[i+6] = { 20,  20, -20}; // back top right 
-    v[i+7] = {-20,  20, -20}; // back top left
-}
-
-
-Vector3 vt[NUM_VERTEX];
-
-const uint8_t NUM_TRIS = 12;
-uint8_t triangles[NUM_TRIS*3] = {0, 1, 2, 
-                                 2, 3, 0,
-                                 4, 5, 6, 
-                                 6, 7, 4,
-                                 0, 3, 4,
-                                 4, 7, 3,
-                                 1, 2, 5,
-                                 5, 6, 2,
-                                 2, 3, 6,
-                                 6, 3, 7,
-                                 1, 0, 5,
-                                 5, 0, 4
-                                 };
-uint8_t color[NUM_TRIS*3] = {100,   0,   0, 
-                             100,   0,   0, 
-                               0,   0, 100, 
-                               0,   0, 100,
-                               0, 100,   0,
-                               0, 100,   0,
-                             100, 100,   0,
-                             100, 100,   0,
-                             0, 100,  100,
-                             0, 100,  100,
-                             100, 0,  100,
-                             100, 0,  100
-                               };
-
-TriangleDepth tridepths[NUM_TRIS];
-
-Vector3 centres[NUM_CUBES];
-//for (uint8_t i = 0; i < NUM_CUBES; i++ ) {
-//    centres[i] = { float(rand() % 20) - 10.0f,
-//                   float(rand() % 40) - 20.0f,
-//                   -float(rand() % 80) };
-centres[0] = {0, 0, 0};
-//}
-
-float xangle = 0, yangle = 0, zangle = 0;
-float dx = 0.10f;
-float dy = 0.50f;
-float dz = -0.25f;
-//float xangle2 = 0, yangle2 = 0, zangle2 = 0;
-
+    bool led = true;
+    uint8_t at = 0;
     while (1) {
 //        gpio_put(19, led = !led);
 
@@ -218,132 +156,14 @@ float dz = -0.25f;
             buf = !buf;
             memset(tbuf, 20, BUF_SIZE); // back to 0 for black
 
-yangle += 0.02f;
-xangle += 0.05f;
-zangle += 0.001f;
-
-if (xangle >= 360) xangle -= 360;
-if (yangle >= 360) yangle -= 360;
-if (zangle >= 360) zangle -= 360;
-
-centres[0].x += dx;
-centres[0].y += dy;
-centres[0].z += dz;
-
-//if (abs(centres[0].x) > 15) {
-//    dx = -dx;
-//}
-//if (abs(centres[0].y) > 18) {
-//    dy = -dy;
-//}
-if (centres[0].z < -100 || centres[0].z >= 0) {
-    dz = -dz;
-}
-
-//yangle2 += 0.01f;
-
-//Matrix3 rot = Matrix3::getPerspMatrix({1,1,0.1}).multiply(Matrix3::getRotationMatrix(xangle, yangle, zangle));
-Matrix3 rot = Matrix3::getRotationMatrix(xangle, yangle, zangle);
-//Matrix3 orbit = Matrix3::getRotationMatrix(xangle2, yangle2, zangle2);
-
-for (uint8_t i = 0; i < NUM_VERTEX; i++) {
-//    xt[i] =  (x[i] * cosf(angle) + y[i] * sinf(angle))/2 + 30;
-//    yt[i] = -x[i] * sinf(angle) + y[i] * cosf(angle) + 60;
-    vt[i] = rot.preMultiply(v[i]);
-
-//vt[i].x -= 10;
-//vt[i].y += 30;
-vt[i] = vt[i].add(centres[i/8]);
-//vt[i] = vt[i].add(orbit.preMultiply(centres[i/8]));
-//vt[i].z = vt[i].z - 40;
-
-    vt[i] = vt[i].scale(40.0f / (-vt[i].z/2.0 + 40.0f));
-
-    vt[i].x = (vt[i].x/2) + 32;
-    vt[i].y += 62;
-}
-
-for (uint8_t i = 0; i < NUM_VERTEX; i++) {
-    if (vt[i].x > 60) {
-        dx = -abs(dx);
-        break;
-    }
-    else if (vt[i].x < 2) {
-        dx = abs(dx);
-        break;
-    }
-}
-for (uint8_t i = 0; i < NUM_VERTEX; i++) {
-    if (vt[i].y > 120) {
-        dy = -abs(dy);
-        break;
-    }
-    else if (vt[i].y < 2) {
-        dy = abs(dy);
-        break;
-    }
-}
-
-//fillTriangle(tbuf, xt[0], yt[0], xt[1], yt[1], xt[2], yt[2], 0, 100, 0);
-
-// calculate distance away
-for (uint8_t i = 0; i < NUM_TRIS*3; i+=3) {
-//    tridepths[i/3].depth = (vt[triangles[i]].z + vt[triangles[i+1]].z + vt[triangles[i+2]].z) / 3;
-//    tridepths[i/3].depth = MIN(MIN(vt[triangles[i]].z, vt[triangles[i+1]].z), vt[triangles[i+2]].z);
-//    tridepths[i/3].depth = (MIN(MIN(vt[triangles[i]].z, vt[triangles[i+1]].z), vt[triangles[i+2]].z) +
-//        MAX(MAX(vt[triangles[i]].z, vt[triangles[i+1]].z), vt[triangles[i+2]].z)) / 2;
-
-
-if (i % 6 == 0) {
-    tridepths[i/3].depth = (vt[triangles[i]].z + vt[triangles[i+1]].z + vt[triangles[i+2]].z + 
-        vt[triangles[i+3]].z + vt[triangles[i+4]].z + vt[triangles[i+5]].z) / 6;
-}
-else {
-    tridepths[i/3].depth = (vt[triangles[i]].z + vt[triangles[i+1]].z + vt[triangles[i+2]].z + 
-        vt[triangles[i-3]].z + vt[triangles[i-2]].z + vt[triangles[i-1]].z) / 6;
-}
-
-    tridepths[i/3].index = i/3;
-}
-
-qsort(tridepths, NUM_TRIS, sizeof(TriangleDepth), compare);
-
-
-/*for (uint8_t i = 0; i < NUM_TRIS*3; i+=3) {
-    fillTriangle(tbuf, 
-        vt[triangles[i]].x, vt[triangles[i]].y, 
-        vt[triangles[i+1]].x, vt[triangles[i+1]].y, 
-        vt[triangles[i+2]].x, vt[triangles[i+2]].y, 
-        color[i], color[i+1], color[i+2]);
-}*/
-
-for (uint8_t i = 0; i < NUM_TRIS; i++) {
-
-    uint8_t idx = tridepths[i].index;
-//    uint8_t idx = i;   
-    idx = idx*3;
-
-    fillTriangle(tbuf, 
-        vt[triangles[idx]].x, vt[triangles[idx]].y, 
-        vt[triangles[idx+1]].x, vt[triangles[idx+1]].y, 
-        vt[triangles[idx+2]].x, vt[triangles[idx+2]].y, 
-        color[idx], color[idx+1], color[idx+2]);
-}
-
-
-//for (uint8_t i = 0; i < NUM_VERTEX; i+=3) {
-//    fillTriangle(tbuf, xt[i], yt[i], xt[i+1], yt[i+1], xt[i+2], yt[i+2], 0, 100, 0);
-//}
-
-
-sleep_ms(20);
-
-
-
+            cube.step();
+            tr.reset();
+            tr.addObject(cube);
+            tr.render(tbuf);
 
 
             cp.setBuf(tbuf);
-//            sleep_ms(20); // 50 Hz?
+            sleep_ms(20); // 50 Hz?
 
 //at += 1;
 //if (at >= 127) at = 0;
