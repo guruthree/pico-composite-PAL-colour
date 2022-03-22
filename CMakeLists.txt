@@ -5,7 +5,7 @@ set(PICO_BOARD "pimoroni_tiny2040" CACHE STRING "" FORCE)
 
 include(pico_sdk_import.cmake)
 
-project(pio-DAC_project C CXX ASM)
+project(pico-composite-PAL-colour_project C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
@@ -13,17 +13,17 @@ pico_sdk_init()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstack-usage")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstack-usage")
 
-add_executable(pio-DAC
-    pio-DAC.cpp
+add_executable(pico-composite-PAL-colour
+    pico-composite-PAL-colour.cpp
 )
 
-pico_generate_pio_header(pio-DAC ${CMAKE_CURRENT_LIST_DIR}/dac.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
+pico_generate_pio_header(pico-composite-PAL-colour ${CMAKE_CURRENT_LIST_DIR}/dac.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
 
 include_directories(includes includes/images demos)
 
-target_include_directories(pio-DAC PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(pico-composite-PAL-colour PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
-target_link_libraries(pio-DAC
+target_link_libraries(pico-composite-PAL-colour
     pico_stdlib
     pico_multicore
     hardware_pio
@@ -32,8 +32,8 @@ target_link_libraries(pio-DAC
 	pico_mem_ops
     pico_float
 )
-pico_add_extra_outputs(pio-DAC)
+pico_add_extra_outputs(pico-composite-PAL-colour)
 
-pico_enable_stdio_usb(pio-DAC 1)
-pico_enable_stdio_uart(pio-DAC 0)
+pico_enable_stdio_usb(pico-composite-PAL-colour 1)
+pico_enable_stdio_uart(pico-composite-PAL-colour 0)
 
