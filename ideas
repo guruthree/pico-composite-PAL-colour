@@ -4,16 +4,18 @@ making sure not in flash?
 
 https://forums.raspberrypi.com/viewtopic.php?t=308794
 
+raspberry pi logo card
+
 
 ===
 
-demos?
+demos routine:
+timed or changing when boot button is pressed
 
 slide show
-    raspberry pi logo
-lattice boltzman
-some sort of game? (break out?)
-spinning cube
-
-
-super hexagon
+    test card f, raspberry pi logo
+lattice boltzman simulation
+bouncing cube screen saver
+some sort of game?
+    break out
+    super hexagon
