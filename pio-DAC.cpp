@@ -198,14 +198,17 @@ float zangle = 0;
 
 
 zangle += 0.02f;
-xangle += 0.002;
+xangle += 0.1f;
 
+//Matrix3 rot = Matrix3::getPerspMatrix({1,1,0.1}).multiply(Matrix3::getRotationMatrix(xangle, yangle, zangle));
 Matrix3 rot = Matrix3::getRotationMatrix(xangle, yangle, zangle);
 
 for (uint8_t i = 0; i < NUM_VERTEX; i++) {
 //    xt[i] =  (x[i] * cosf(angle) + y[i] * sinf(angle))/2 + 30;
 //    yt[i] = -x[i] * sinf(angle) + y[i] * cosf(angle) + 60;
     vt[i] = rot.preMultiply(v[i]);
+    vt[i] = vt[i].scale(20.0f / (-vt[i].z/2.0 + 40.0f));
+
     vt[i].x = (vt[i].x/2) + 30;
     vt[i].y += 60;
 }
@@ -214,15 +217,31 @@ for (uint8_t i = 0; i < NUM_VERTEX; i++) {
 // calculate distance away
 for (uint8_t i = 0; i < NUM_TRIS*3; i+=3) {
     tridepths[i/3].depth = (vt[triangles[i]].z + vt[triangles[i+1]].z + vt[triangles[i+2]].z) / 3;
-    tridepths[i/3].index = i;
+    tridepths[i/3].index = i/3;
 }
 
-for (uint8_t i = 0; i < NUM_TRIS*3; i+=3) {
+qsort(tridepths, NUM_TRIS, sizeof(TriangleDepth), compare);
+
+
+/*for (uint8_t i = 0; i < NUM_TRIS*3; i+=3) {
     fillTriangle(tbuf, 
         vt[triangles[i]].x, vt[triangles[i]].y, 
         vt[triangles[i+1]].x, vt[triangles[i+1]].y, 
         vt[triangles[i+2]].x, vt[triangles[i+2]].y, 
         color[i], color[i+1], color[i+2]);
+}*/
+
+for (uint8_t i = 0; i < NUM_TRIS; i++) {
+
+    uint8_t idx = tridepths[i].index;
+//    uint8_t idx = i;   
+    idx = idx*3;
+
+    fillTriangle(tbuf, 
+        vt[triangles[idx]].x, vt[triangles[idx]].y, 
+        vt[triangles[idx+1]].x, vt[triangles[idx+1]].y, 
+        vt[triangles[idx+2]].x, vt[triangles[idx+2]].y, 
+        color[idx], color[idx+1], color[idx+2]);
 }
 
 
