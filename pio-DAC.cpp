@@ -280,8 +280,21 @@ for (uint8_t i = 0; i < NUM_VERTEX; i++) {
 
 // calculate distance away
 for (uint8_t i = 0; i < NUM_TRIS*3; i+=3) {
-    tridepths[i/3].depth = (vt[triangles[i]].z + vt[triangles[i+1]].z + vt[triangles[i+2]].z) / 3;
+//    tridepths[i/3].depth = (vt[triangles[i]].z + vt[triangles[i+1]].z + vt[triangles[i+2]].z) / 3;
 //    tridepths[i/3].depth = MIN(MIN(vt[triangles[i]].z, vt[triangles[i+1]].z), vt[triangles[i+2]].z);
+//    tridepths[i/3].depth = (MIN(MIN(vt[triangles[i]].z, vt[triangles[i+1]].z), vt[triangles[i+2]].z) +
+//        MAX(MAX(vt[triangles[i]].z, vt[triangles[i+1]].z), vt[triangles[i+2]].z)) / 2;
+
+
+if (i % 6 == 0) {
+    tridepths[i/3].depth = (vt[triangles[i]].z + vt[triangles[i+1]].z + vt[triangles[i+2]].z + 
+        vt[triangles[i+3]].z + vt[triangles[i+4]].z + vt[triangles[i+5]].z) / 6;
+}
+else {
+    tridepths[i/3].depth = (vt[triangles[i]].z + vt[triangles[i+1]].z + vt[triangles[i+2]].z + 
+        vt[triangles[i-3]].z + vt[triangles[i-2]].z + vt[triangles[i-1]].z) / 6;
+}
+
     tridepths[i/3].index = i/3;
 }
 
