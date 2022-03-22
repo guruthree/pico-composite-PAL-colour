@@ -262,8 +262,9 @@ class ColourPal {
         }
 
         void setBuf(int8_t *in) {
-            while (currentline > YDATA_START-1)
-                sleep_us(60);
+            while (currentline > YDATA_START-1) {
+                sleep_us(16);
+            }
             buf = in;
         }
 
