@@ -1,17 +1,20 @@
-62x125 with doubling
-or 
-78x125 without
+fixed point?
+
+making sure not in flash?
+
+https://forums.raspberrypi.com/viewtopic.php?t=308794
 
 
-it seems like array access is what's killing speed
+===
+
+demos?
+
+slide show
+    raspberry pi logo
+lattice boltzman
+some sort of game? (break out?)
+hooked up as output from a computer somehow? 
 
 
 
-while loop?
-
-
-test with regular pico and same DAC
-test with pico in regular vga board DAC
-
-
-
+other multiples?

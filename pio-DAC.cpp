@@ -155,6 +155,8 @@ uint8_t at = 0;
                     if (!lbm.BOUND[x][y]) {
                         speed = lbm.getSpeed(x, y) * 63.0 / lbm.maxVal;
                         speed > 63 ? speed = 63 : 1;
+// could change this from nearest neighbour interpolation?
+
                         setPixelRGB(tbuf, xat, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
                         setPixelRGB(tbuf, xat, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
                         setPixelRGB(tbuf, xat, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
