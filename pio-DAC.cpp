@@ -59,6 +59,7 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
 #include "lbm.h"
 #include "jet.h"
 #include "discountadafruitgfx.h"
+#include "vectormath.h"
 
 ColourPal cp;
 LBM lbm;
