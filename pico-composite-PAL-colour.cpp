@@ -55,6 +55,10 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
     dma_channel_set_write_addr(dma_chan32, NULL, false);
 }
 
+#include "colourpal.h"
+
+
+
 struct TriangleDepth {
     float depth;
     uint8_t index;
@@ -89,22 +93,22 @@ void seed_random_from_rosc()
 
 
 
-#include "colourpal.h"
+
+
+
+// one byte y, one byte u, one byte v, repeating for 125x64, line by line
+#define BUF_SIZE (XRESOLUTION*YRESOLUTION/2*3)
+int8_t buf0[BUF_SIZE];
+int8_t buf1[BUF_SIZE];
+
 //#include "testcardf.h"
-//#include "mycard.h"
-#include "lbm.h"
-#include "jet.h"
+//#include "raspberrypi.h"
+#include "renderlbm.h"
 #include "discountadafruitgfx.h"
 #include "vectormath.h"
 
 ColourPal cp;
 LBM lbm;
-
-// one byte y, one byte u, one byte v, repeating for 125x64, line by line
-#define BUF_SIZE (XRESOLUTION*YRESOLUTION/2*3)
-//#define BUF_SIZE (XRESOLUTION*128/2*3)
-int8_t buf0[BUF_SIZE];
-int8_t buf1[BUF_SIZE];
 
 void core1_entry();
 
@@ -155,14 +159,12 @@ int main() {
 
     lbm.init();
     lbm.cylinder(14);
-//    lbm.cylinder(10, 4);
-//    lbm.cylinder(20, 16);
 
     memset(buf0, 0, BUF_SIZE);
     memset(buf1, 0, BUF_SIZE);
     bool buf = false; // buf0
     int8_t *tbuf;
-//    cp.setBuf(buf0);
+
 
 bool led = true;
 uint8_t at = 0;
@@ -233,9 +235,8 @@ float dz = -0.25f;
     while (1) {
 //        gpio_put(19, led = !led);
 
-//        lbm.timestep();
-//        if (lbm.getNumberOfTimeSteps() % 10 == 0) {
-//            lbm.timestep(true);
+//    lbm.timestep();
+//    lbm.timestep(true);
 
             if (buf) {
                 tbuf = buf1;
@@ -368,34 +369,7 @@ sleep_ms(20);
 
 
 
-/*            uint8_t speed;
 
-            uint8_t xat = 0, yat = 0;
-//            for (uint8_t y = 0; y < lbm.NY; y++) {
-            for (uint8_t y = 2; y < lbm.NY-2; y++) {
-                xat = 0;
-                for (uint8_t x = 0; x < lbm.NX; x++) {
-                    if (!lbm.BOUND[x][y]) {
-                        speed = lbm.getSpeed(x, y) * 63.0 / lbm.maxVal;
-                        speed > 63 ? speed = 63 : 1;
-// could change this from nearest neighbour interpolation?
-
-                        setPixelRGB(tbuf, xat, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
-                        setPixelRGB(tbuf, xat, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
-                        setPixelRGB(tbuf, xat, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
-                        setPixelRGB(tbuf, xat, yat+3, jet[speed][0], jet[speed][1], jet[speed][2]);
-
-                        setPixelRGB(tbuf, xat+1, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
-                        setPixelRGB(tbuf, xat+1, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
-                        setPixelRGB(tbuf, xat+1, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
-                        setPixelRGB(tbuf, xat+1, yat+3, jet[speed][0], jet[speed][1], jet[speed][2]);
-                    }
-//                    xat++;
-                    xat += 2;
-                }
-//                yat += 2;
-                yat += 4;
-            } */
 
             cp.setBuf(tbuf);
 //            sleep_ms(20); // 50 Hz?

@@ -1,9 +1,14 @@
-//clc
-//c = colormap('jet');
-//c = c * 127;
-//c = round(c);
-//c = c(1:2:end,:);
-//fprintf('{%d, %d, %d},\n', c')
+// This is a 63 element version of the jet colourmap produced by Octave/MATLAB
+
+/*
+
+c = colormap('jet');
+c = c * 127;
+c = round(c);
+c = c(1:2:end,:);
+fprintf('{%d, %d, %d},\n', c')
+
+*/
 
 uint8_t __not_in_flash("jet") jet[64][3] = {
     {0, 0, 65},

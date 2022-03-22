@@ -1,3 +1,6 @@
+// a low resolution YUV colour format BBC2 "Test Card F"
+// original image sourced from http://www.testcardcircle.org.uk/tchistory.html
+
 // one byte y, one byte u, one byte v, repeating for 125x64, line by line
 
 int8_t __not_in_flash("testcardfpng") testcardfpng[] = {
