@@ -19,6 +19,8 @@ add_executable(pio-DAC
 
 pico_generate_pio_header(pio-DAC ${CMAKE_CURRENT_LIST_DIR}/dac.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
 
+include_directories(includes includes/images demos)
+
 target_include_directories(pio-DAC PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
 target_link_libraries(pio-DAC
