@@ -68,6 +68,11 @@ void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int32_t &v
 }
 
 void setPixelRGB(int8_t *buf, uint8_t xcoord, uint8_t ycoord, uint8_t r, uint8_t g, uint8_t b) {
+    if (xcoord >= XRESOLUTION || ycoord >= YRESOLUTION/2) {
+        // clipping
+        return;
+    }
+
     int32_t y = 0, u = 0, v = 0;
     rgb2yuv(r, g, b, y, u, v);
 

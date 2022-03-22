@@ -227,7 +227,7 @@ centres[0] = {0, 0, 0};
 float xangle = 0, yangle = 0, zangle = 0;
 float dx = 0.10f;
 float dy = 0.50f;
-float dz = -1.0f;
+float dz = -0.25f;
 //float xangle2 = 0, yangle2 = 0, zangle2 = 0;
 
     while (1) {
@@ -250,16 +250,20 @@ yangle += 0.02f;
 xangle += 0.05f;
 zangle += 0.001f;
 
+if (xangle >= 360) xangle -= 360;
+if (yangle >= 360) yangle -= 360;
+if (zangle >= 360) zangle -= 360;
+
 centres[0].x += dx;
 centres[0].y += dy;
 centres[0].z += dz;
 
-if (abs(centres[0].x) > 15) {
-    dx = -dx;
-}
-if (abs(centres[0].y) > 18) {
-    dy = -dy;
-}
+//if (abs(centres[0].x) > 15) {
+//    dx = -dx;
+//}
+//if (abs(centres[0].y) > 18) {
+//    dy = -dy;
+//}
 if (centres[0].z < -100 || centres[0].z >= 0) {
     dz = -dz;
 }
@@ -286,6 +290,28 @@ vt[i] = vt[i].add(centres[i/8]);
     vt[i].x = (vt[i].x/2) + 32;
     vt[i].y += 62;
 }
+
+for (uint8_t i = 0; i < NUM_VERTEX; i++) {
+    if (vt[i].x > 60) {
+        dx = -abs(dx);
+        break;
+    }
+    else if (vt[i].x < 2) {
+        dx = abs(dx);
+        break;
+    }
+}
+for (uint8_t i = 0; i < NUM_VERTEX; i++) {
+    if (vt[i].y > 120) {
+        dy = -abs(dy);
+        break;
+    }
+    else if (vt[i].y < 2) {
+        dy = abs(dy);
+        break;
+    }
+}
+
 //fillTriangle(tbuf, xt[0], yt[0], xt[1], yt[1], xt[2], yt[2], 0, 100, 0);
 
 // calculate distance away
