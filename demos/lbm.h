@@ -24,6 +24,8 @@
  *
  */
 
+#include "jet.h"
+
 class LBM {
 
     // reference: https://hackaday.io/project/25446-lattice-boltzmann-fluid-flow-in-matlab
@@ -336,3 +338,33 @@ class LBM {
         }
 
 }; // end class
+
+void drawlbm(LBM &lbm, int8_t *tbuf) {
+
+    memset(tbuf, 0, BUF_SIZE);
+
+    uint8_t xat = 0, yat = 0, speed;
+    for (uint8_t y = 2; y < lbm.NY-2; y++) { // don't draw boundaries
+        xat = 0;
+        for (uint8_t x = 0; x < lbm.NX; x++) {
+            if (!lbm.BOUND[x][y]) {
+                speed = lbm.getSpeed(x, y) * 63.0 / lbm.maxVal;
+                speed > 63 ? speed = 63 : 1;
+
+                // simple nearest neighbour interpolation?
+                setPixelRGB(tbuf, xat, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
+                setPixelRGB(tbuf, xat, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
+                setPixelRGB(tbuf, xat, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
+                setPixelRGB(tbuf, xat, yat+3, jet[speed][0], jet[speed][1], jet[speed][2]);
+
+                setPixelRGB(tbuf, xat+1, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
+                setPixelRGB(tbuf, xat+1, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
+                setPixelRGB(tbuf, xat+1, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
+                setPixelRGB(tbuf, xat+1, yat+3, jet[speed][0], jet[speed][1], jet[speed][2]);
+            }
+            xat += 2;
+        }
+        yat += 4;
+    } 
+
+}

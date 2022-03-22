@@ -125,7 +125,7 @@ class TriangleRenderer {
         render();
 
         */
-};
+}; // end TriangleRenderer
 
 class Cube : public Object {
     std::vector<Vector3> v; // base verticies before animation
@@ -241,4 +241,4 @@ class Cube : public Object {
                }
             }
         }
-};
+}; // end Cube

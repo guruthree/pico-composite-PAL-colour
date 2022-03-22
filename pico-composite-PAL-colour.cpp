@@ -73,9 +73,9 @@ int8_t buf0[BUF_SIZE];
 int8_t buf1[BUF_SIZE];
 
 #include "random.h"
-//#include "testcardf.h"
-//#include "raspberrypi.h"
-#include "renderlbm.h"
+#include "testcardf.h"
+#include "raspberrypi.h"
+#include "lbm.h"
 #include "cube.h"
 
 ColourPal cp;
@@ -87,8 +87,8 @@ int main() {
 //    stdio_init_all();
     set_sys_clock_khz(CLOCK_SPEED/1e3, true);
 
-//sleep_ms(1500);
-//printf("hello world\n");
+//    sleep_ms(1500);
+//    printf("hello world\n");
 
     gpio_init(18);
     gpio_init(19);
@@ -143,10 +143,40 @@ int main() {
 
     bool led = true;
     uint8_t at = 0;
+    uint32_t numframes;
     while (1) {
-//        gpio_put(19, led = !led);
+        // flash LED ahead of calculating frame
+        gpio_put(19, led = !led); 
+        sleep_us(100);
+        gpio_put(19, led = !led); 
 
-
+        // loop through some cool demos
+        if (at == 0) {
+            // show test pattern for 1 second
+            cp.setBuf(NULL);
+            if (numframes == 1*50) {
+                at++;
+                numframes = 0;
+            }
+        }
+        else if (at == 1) {
+            // show raspberry pi for 2 seconds
+            cp.setBuf(raspberrypipng);
+            if (numframes == 2*50) {
+                at++;
+                numframes = 0;
+            }
+        }
+        else if (at == 2) {
+            // show test card f for 2 seconds
+            cp.setBuf(testcardfpng);
+            if (numframes == 2*50) {
+                at++;
+                numframes = 0;
+            }
+        }
+        else {
+            // animated demos
             if (buf) {
                 tbuf = buf1;
             }
@@ -154,38 +184,41 @@ int main() {
                 tbuf = buf0;
             }
             buf = !buf;
-            memset(tbuf, 20, BUF_SIZE); // back to 0 for black
 
-            cube.step();
-            tr.reset();
-            tr.addObject(cube);
-            tr.render(tbuf);
+            if (at == 3) {
+                // show the LBM simulation
+                memset(tbuf, 0, BUF_SIZE);
+
+                // if floating point was faster, we'd calculate multiple frames between renders
+                lbm.timestep();
+                lbm.timestep(true);
+
+                drawlbm(lbm, tbuf);
+            }
+            else if (at == 4) {
+                // show a bouncing cube
+                memset(tbuf, 20, BUF_SIZE);
+
+                cube.step();
+                tr.reset();
+                tr.addObject(cube);
+                tr.render(tbuf);
+            }
 
 
+            // animated for 5 seconds
+            if (numframes == 5*50) {
+                at++;
+                numframes = 0;
+            }
             cp.setBuf(tbuf);
-            sleep_ms(20); // 50 Hz?
-
-//at += 1;
-//if (at >= 127) at = 0;
-
-//        } // time-step
-//        tight_loop_contents();
-
-        // do something cool here
-/*        if (at == 0) {
-            cp.setBuf(NULL);
         }
-        else if (at == 1) {
-            cp.setBuf(testcardfpng);
-        }
-        else if (at == 2) {
-            cp.setBuf(mycardpng);
-        }
-        if (++at == 3) at = 0; */
-//        sleep_ms(500);
 
 
-        tight_loop_contents();
+        sleep_ms(20); // 50 Hz?
+
+        if (++at == 5) at = 0;
+        numframes++;
     }
 }
 
