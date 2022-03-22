@@ -28,6 +28,9 @@
 
 struct Vector3 {
     float x, y, z;
+    Vector3 add(Vector3);
+    Vector3 scale(float);
+    Vector3 subtract(Vector3);
 };
 
 struct Matrix3{
@@ -38,7 +41,16 @@ struct Matrix3{
     Matrix3 multiply(Matrix3);
     Vector3 preMultiply(Vector3);
 
+    // Gets a rotation matrix
     static Matrix3 getRotationMatrix(float alpha, float beta, float gamma);
+
+    // Gets a perspective scaling matrix, scaled along the z-axis
+    static Matrix3 getPerspMatrix(Vector3 surfacePos);
+
+    // Gets a camera transform matrix
+    /*static Matrix3 getCameraMaterix(Vector3 cameraPosition,
+                                    Vector3 cameraRotation,
+                                    float surfaceDistanceIntoZ);*/
 };
 
 
@@ -57,6 +69,29 @@ Vector3 Matrix3::preMultiply(Vector3 v)
     return output;
 }
 
+Vector3 Vector3::add(Vector3 v)
+{
+    Vector3 out = {x + v.x,
+                   y + v.y,
+                   z + v.z};
+    return out;
+}
+Vector3 Vector3::subtract(Vector3 v)
+{
+    Vector3 out = {x - v.x,
+                   y - v.y,
+                   z - v.z};
+    return out;
+}
+Vector3 Vector3::scale(float s)
+{
+    Vector3 out = {x * s,
+                   y * s,
+                   z * s};
+    return out;
+}
+
+
 // rotation matrix, angles about rotate(x, y, z)
 Matrix3 Matrix3::getRotationMatrix(float alpha, float beta, float gamma) 
 {
@@ -71,4 +106,17 @@ Matrix3 Matrix3::getRotationMatrix(float alpha, float beta, float gamma)
                     0, sinf(alpha),  cosf(alpha)};
     return Rz.multiply(Ry.multiply(Rx));
 }
+
+Matrix3 Matrix3::getPerspMatrix(Vector3 sp) {
+    Matrix3 mat = {  1  ,  0  , sp.x/sp.z,
+                     0  ,  1  , sp.y/sp.z,
+                     0  ,  0  , 1.0f/sp.z};
+    return mat;
+}
+
+/*Matrix3 Matrix3::getCameraMatrix(Vector3 camPos, Vector3 camRot, float d)
+{
+    // Rotate the world inversely around the camera position
+    Matrix3 invRot = rotate(camRot)
+}*/
 
