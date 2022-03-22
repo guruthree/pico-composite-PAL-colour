@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <math.h>
+#include <stdlib.h>
 
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -35,6 +36,7 @@
 #include "hardware/dma.h"
 #include "hardware/irq.h"
 #include "hardware/clocks.h"
+#include "hardware/regs/rosc.h"
 #include "dac.pio.h"
 
 // replace with const?
@@ -64,6 +66,28 @@ int compare (const void* _a, const void* _b) {
     else if (a->depth < b->depth) return -1;
     else return 1;
 }
+
+
+// https://forums.raspberrypi.com/viewtopic.php?t=302960
+void seed_random_from_rosc()
+{
+  uint32_t random = 0x811c9dc5;
+  uint8_t next_byte = 0;
+  volatile uint32_t *rnd_reg = (uint32_t *)(ROSC_BASE + ROSC_RANDOMBIT_OFFSET);
+
+  for (int i = 0; i < 16; i++) {
+    for (int k = 0; k < 8; k++) {
+      next_byte = (next_byte << 1) | (*rnd_reg & 1);
+    }
+
+    random ^= next_byte;
+    random *= 0x01000193;
+  }
+
+  srand(random);
+} 
+
+
 
 #include "colourpal.h"
 //#include "testcardf.h"
@@ -143,17 +167,20 @@ int main() {
 bool led = true;
 uint8_t at = 0;
 
-const uint8_t NUM_VERTEX = 8;
+const uint8_t NUM_CUBES = 1;
+const uint8_t NUM_VERTEX = 8*NUM_CUBES;
 
 Vector3 v[NUM_VERTEX];
-v[0] = {-20, -20,  20};
-v[1] = { 20, -20,  20};
-v[2] = { 20,  20,  20};
-v[3] = {-20,  20,  20};
-v[4] = {-20, -20, -20};
-v[5] = { 20, -20, -20};
-v[6] = { 20,  20, -20};
-v[7] = {-20,  20, -20};
+for (uint8_t i = 0; i < NUM_VERTEX; i+=8) {
+    v[i+0] = {-20, -20,  20};
+    v[i+1] = { 20, -20,  20};
+    v[i+2] = { 20,  20,  20};
+    v[i+3] = {-20,  20,  20};
+    v[i+4] = {-20, -20, -20};
+    v[i+5] = { 20, -20, -20};
+    v[i+6] = { 20,  20, -20};
+    v[i+7] = {-20,  20, -20};
+}
 
 
 Vector3 vt[NUM_VERTEX];
@@ -170,9 +197,17 @@ uint8_t color[NUM_TRIS*3] = {100,   0,   0,
 
 TriangleDepth tridepths[NUM_TRIS];
 
-float xangle = 0;
-float yangle = 0;
-float zangle = 0;
+Vector3 centres[NUM_CUBES];
+seed_random_from_rosc();
+for (uint8_t i = 0; i < NUM_CUBES; i++ ) {
+    centres[i] = { float(rand() % 20) - 10.0f,
+                   float(rand() % 40) - 20.0f,
+                   -float(rand() % 80) };
+//centres[i] = {-10, -30, 0};
+}
+
+float xangle = 0, yangle = 0, zangle = 0;
+float xangle2 = 0, yangle2 = 0, zangle2 = 0;
 
     while (1) {
 //        gpio_put(19, led = !led);
@@ -197,16 +232,26 @@ float zangle = 0;
 //fillTriangle(tbuf, 10, 30, 30, 33, 25, 41, 0, 0, 100);
 
 
-zangle += 0.02f;
+//zangle += 0.02f;
 xangle += 0.1f;
+
+yangle2 += 0.01f;
 
 //Matrix3 rot = Matrix3::getPerspMatrix({1,1,0.1}).multiply(Matrix3::getRotationMatrix(xangle, yangle, zangle));
 Matrix3 rot = Matrix3::getRotationMatrix(xangle, yangle, zangle);
+Matrix3 orbit = Matrix3::getRotationMatrix(xangle2, yangle2, zangle2);
 
 for (uint8_t i = 0; i < NUM_VERTEX; i++) {
 //    xt[i] =  (x[i] * cosf(angle) + y[i] * sinf(angle))/2 + 30;
 //    yt[i] = -x[i] * sinf(angle) + y[i] * cosf(angle) + 60;
     vt[i] = rot.preMultiply(v[i]);
+
+//vt[i].x -= 10;
+//vt[i].y += 30;
+//vt[i] = vt[i].add(centres[i/8]);
+vt[i] = vt[i].add(orbit.preMultiply(centres[i/8]));
+vt[i].z = vt[i].z - 40;
+
     vt[i] = vt[i].scale(20.0f / (-vt[i].z/2.0 + 40.0f));
 
     vt[i].x = (vt[i].x/2) + 30;
