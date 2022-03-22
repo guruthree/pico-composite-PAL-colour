@@ -2,7 +2,7 @@
 
 Trying to get the [Raspberry Pi RP2040](https://www.raspberrypi.com/documentation/microcontrollers/rp2040.html) chip's PIO to generate a colour PAL composite video signal, using only a [resistor ladder](https://en.wikipedia.org/wiki/Resistor_ladder) digital-to-analogue converter (DAC).
 
-![Photograph of a CRT screen running the code](onacrt.jpg)
+![Photograph of a CRT screen running the code](resources/onacrt.jpg)
 
 **WARNING: THERE IS A CHANCE THIS SOFTWARE MAY DAMAGE YOUR PICO. I TAKE NO RESPONSIBILITY.**
 I'm running the RP2040 at 266 MHz. This is a 200% overclock. The clock divider on the PIO is about 4. That is a lot of data to process (4256 bytes) in not a very long period of time (64 microseconds). I have a sneaking suspicion that the only reason it's working is because running at high overclock so long may have permanently damaged the RP2040 chip. It no longer registers when plugged into some computers. The GPIO seems to have 5 V coming out.
@@ -11,7 +11,7 @@ As for my specific hardware, I'm using a [Pimoroni Tiny2040](https://shop.pimoro
 
 Due to the technical limitations of RAM and timings, the best I was able to get displayed was a 64x125 anamorphic image, stretched back out to 128x125. It's possible to get a little bit more X resolution, up to (78x125) without the use of the anamorphic doubling. I have a lot more appreciation for the engineers of the 80s that did better than this with a chip running 1/200th the speed!
 
-![Passive resistor DAC and Tiny2040](chipanddac.jpg)
+![Passive resistor DAC and Tiny2040](resources/chipanddac.jpg)
 
 ## Resources ##
 
