@@ -28,7 +28,7 @@
 #define XRESOLUTION 64
 // #define XRESOLUTION 78 // without line doubling
 #define EFFECTIVE_XRESOLUTION (XRESOLUTION*2) // stretch from anamorphic
-#define YRESOLUTION 250 // line count, this is / 2
+#define YRESOLUTION 250 // line count, this is divided by two for the size of the display buffer
 #define YDATA_START 43 // line number
 #define YDATA_END (YDATA_START + YRESOLUTION)
 

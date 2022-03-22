@@ -58,6 +58,7 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
 //#include "mycard.h"
 #include "lbm.h"
 #include "jet.h"
+#include "discountadafruitgfx.h"
 
 ColourPal cp;
 LBM lbm;
@@ -129,12 +130,29 @@ int main() {
 bool led = true;
 uint8_t at = 0;
 
+
+// note screen space is 60x120
+int8_t x[3] = {-20, 0, 20};
+int8_t y[3] = {-5, 20, -5};
+
+
+
+// transformed
+uint8_t xt[3];
+uint8_t yt[3];
+
+memset(xt, 0, sizeof(uint8_t)*3);
+memset(yt, 0, sizeof(uint8_t)*3);
+
+
+float angle = 0;
+
     while (1) {
 //        gpio_put(19, led = !led);
 
 //        lbm.timestep();
 //        if (lbm.getNumberOfTimeSteps() % 10 == 0) {
-            lbm.timestep(true);
+//            lbm.timestep(true);
 
             if (buf) {
                 tbuf = buf1;
@@ -145,7 +163,26 @@ uint8_t at = 0;
             buf = !buf;
             memset(tbuf, 0, BUF_SIZE);
 
-            uint8_t speed;
+
+
+
+drawLineRGB(tbuf, 10, 10, 15, 30, 127, 0, 0);
+fillTriangle(tbuf, 10, 30, 30, 33, 25, 41, 0, 0, 100);
+
+
+angle += 0.1f;
+
+for (uint8_t i = 0; i < 3; i ++) {
+    xt[i] =  (x[i] * cosf(angle) + y[i] * sinf(angle))/2 + 30;
+    yt[i] = -x[i] * sinf(angle) + y[i] * cosf(angle) + 60;
+}
+fillTriangle(tbuf, xt[0], yt[0], xt[1], yt[1], xt[2], yt[2], 0, 100, 0);
+
+sleep_ms(20);
+
+
+
+/*            uint8_t speed;
 
             uint8_t xat = 0, yat = 0;
 //            for (uint8_t y = 0; y < lbm.NY; y++) {
@@ -172,7 +209,7 @@ uint8_t at = 0;
                 }
 //                yat += 2;
                 yat += 4;
-            }
+            } */
 
             cp.setBuf(tbuf);
 //            sleep_ms(20); // 50 Hz?
