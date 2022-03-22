@@ -130,20 +130,18 @@ int main() {
 bool led = true;
 uint8_t at = 0;
 
+#define NUM_VERTEX 6
 
 // note screen space is 60x120
-int8_t x[3] = {-20, 0, 20};
-int8_t y[3] = {-5, 20, -5};
-
-
+int8_t x[NUM_VERTEX] = {-10,  10, 10, -10, -10, 10};
+int8_t y[NUM_VERTEX] = {-10, -10, 10, -10,  10, 10};
 
 // transformed
-uint8_t xt[3];
-uint8_t yt[3];
+uint8_t xt[NUM_VERTEX];
+uint8_t yt[NUM_VERTEX];
 
-memset(xt, 0, sizeof(uint8_t)*3);
-memset(yt, 0, sizeof(uint8_t)*3);
-
+memset(xt, 0, sizeof(uint8_t)*NUM_VERTEX);
+memset(yt, 0, sizeof(uint8_t)*NUM_VERTEX);
 
 float angle = 0;
 
@@ -166,17 +164,23 @@ float angle = 0;
 
 
 
-drawLineRGB(tbuf, 10, 10, 15, 30, 127, 0, 0);
-fillTriangle(tbuf, 10, 30, 30, 33, 25, 41, 0, 0, 100);
+//drawLineRGB(tbuf, 10, 10, 15, 30, 127, 0, 0);
+//fillTriangle(tbuf, 10, 30, 30, 33, 25, 41, 0, 0, 100);
 
 
 angle += 0.1f;
 
-for (uint8_t i = 0; i < 3; i ++) {
+for (uint8_t i = 0; i < NUM_VERTEX; i++) {
     xt[i] =  (x[i] * cosf(angle) + y[i] * sinf(angle))/2 + 30;
     yt[i] = -x[i] * sinf(angle) + y[i] * cosf(angle) + 60;
 }
-fillTriangle(tbuf, xt[0], yt[0], xt[1], yt[1], xt[2], yt[2], 0, 100, 0);
+//fillTriangle(tbuf, xt[0], yt[0], xt[1], yt[1], xt[2], yt[2], 0, 100, 0);
+
+
+for (uint8_t i = 0; i < NUM_VERTEX; i+=3) {
+    fillTriangle(tbuf, xt[i], yt[i], xt[i+1], yt[i+1], xt[i+2], yt[i+2], 0, 100, 0);
+}
+
 
 sleep_ms(20);
 
