@@ -235,8 +235,6 @@ float dz = -0.25f;
     while (1) {
 //        gpio_put(19, led = !led);
 
-//    lbm.timestep();
-//    lbm.timestep(true);
 
             if (buf) {
                 tbuf = buf1;

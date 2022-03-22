@@ -56,3 +56,10 @@ void drawlbm(LBM &lbm, int8_t *tbuf) {
     } 
 
 }
+
+void renderlbm(LBM &lbm, int8_t *tbuf) {
+    // if floating point was faster, we'd calculate multiple frames between renders
+    lbm.timestep();
+    lbm.timestep(true);
+    drawlbm(lbm, tbuf);
+}
