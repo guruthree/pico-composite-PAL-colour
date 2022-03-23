@@ -24,112 +24,133 @@
  *
  */
 
-% algorithmic generation of a flame sprite
+% algorithmic generation of a flame sprite animation
 
 clear
+pkg load statistics
+
 im = nan(32,32);
+imold = nan(32,32);
+imold2 = nan(32,32);
 
+for frame=1:1000
 
-y = 1;
+    if frame > 3
+        imold2 = imold;
+        imold = im;
+    end
+    im = nan(32,32);
 
-oldx = 1;
-x = randi([5 7]);
-im(y, oldx:(oldx+x)) = nan;
+    y = 1;
 
-oldx = oldx + x + 1;
-x = randi([2 3]);
-im(y, oldx:(oldx+x)) = 1;
+    oldx = 1;
+    x = randi([5 7]);
+    im(y, oldx:(oldx+x)) = nan;
 
-oldx = oldx + x + 1;
-x = randi([1 2]);
-im(y, oldx:(oldx+x)) = 2;
+    oldx = oldx + x + 1;
+    x = randi([2 3]);
+    im(y, oldx:(oldx+x)) = 1;
 
-oldx = oldx + x + 1;
-x = randi([2 4]);
-im(y, oldx:(oldx+x)) = 3;
+    oldx = oldx + x + 1;
+    x = randi([1 2]);
+    im(y, oldx:(oldx+x)) = 2;
 
-oldx = oldx + x + 1;
-x = randi([1 2]);
-im(y, oldx:(oldx+x)) = 2;
+    oldx = oldx + x + 1;
+    x = randi([2 4]);
+    im(y, oldx:(oldx+x)) = 3;
 
-oldx = oldx + x + 1;
-x = randi([2 3]);
-im(y, oldx:(oldx+x)) = 1;
+    oldx = oldx + x + 1;
+    x = randi([1 2]);
+    im(y, oldx:(oldx+x)) = 2;
 
-%pcolor(im)
-%return
+    oldx = oldx + x + 1;
+    x = randi([2 3]);
+    im(y, oldx:(oldx+x)) = 1;
 
-% flame outlines
-for zz=1:3
-    for y=2:32
-        if zz == 1
-            if y <= 5
-                probs = [0.6 0.7 1];
-            elseif y < 10
-                probs = [0.1 0.3 1];
-            else
-                probs = [0 0.02 1];
+    %pcolor(im)
+    %return
+
+    % flame outlines
+    for zz=1:3
+        for y=2:32
+            if zz == 1
+                if y <= 5
+                    probs = [0.3 0.7 1];
+                elseif y < 10
+                    probs = [0.1 0.3 1];
+                else
+                    probs = [0 0.02 1];
+                end
+            elseif zz == 2
+                if y <= 5
+                    probs = [0.5 0.6 1];
+                elseif y < 10
+                    probs = [0 0.3 1];
+                else
+                    probs = [0 0.02 1];
+                end
+            elseif zz == 3
+                if y <= 5
+                    probs = [0.3 0.4 1];
+                elseif y < 10
+                    probs = [0 0.2 1];
+                else
+                    probs = [0 0.02 1];
+                end
             end
-        elseif zz == 2
-            if y <= 5
-                probs = [0.5 0.6 1];
-            elseif y < 10
-                probs = [0 0.3 1];
-            else
-                probs = [0 0.02 1];
-            end
-        elseif zz == 3
-            if y <= 5
-                probs = [0.3 0.4 1];
-            elseif y < 10
-                probs = [0 0.2 1];
-            else
-                probs = [0 0.02 1];
-            end
-        end
 
-        x = find(im(y-1,:) == zz, 1);
+            x = find(im(y-1,:) == zz, 1);
 
-        r = rand();
-        if r < probs(1) && isnan(im(y,x-1)) && isnan(im(y,x)) % expand
-            im(y,x-1) = zz;
-        elseif r < probs(2) && isnan(im(y,x)) % unchange
-            im(y,x) = zz;
-        else%if r < probs(3) % contract
-            if isnan(im(y,x+1))
-                im(y,x+1) = zz;
-            else
-                break
-            end
-        end
-
-        x = find(im(y-1,:) == zz, 1, 'last');
-        if im(y,x) == zz || im(y,x-1) == zz % shape is closed
-            break
-        end
-        r = rand();
-        if r < probs(1) && isnan(im(y,x+1)) && isnan(im(y,x)) % expand
-            im(y,x+1) = zz;
-        elseif r < probs(2) && isnan(im(y,x)) % unchange
-            im(y,x) = zz;
-        else%if r < probs(3) % contract
-            if isnan(im(y,x-1))
+            r = rand();
+            if r < probs(1) && isnan(im(y,x-1)) && isnan(im(y,x)) % expand
                 im(y,x-1) = zz;
-            else
+            elseif r < probs(2) && isnan(im(y,x)) % unchange
+                im(y,x) = zz;
+            else%if r < probs(3) % contract
+                if isnan(im(y,x+1))
+                    im(y,x+1) = zz;
+                else
+                    break
+                end
+            end
+
+            x = find(im(y-1,:) == zz, 1, 'last');
+            if im(y,x) == zz || im(y,x-1) == zz % shape is closed
                 break
+            end
+            r = rand();
+            if r < probs(1) && isnan(im(y,x+1)) && isnan(im(y,x)) % expand
+                im(y,x+1) = zz;
+            elseif r < probs(2) && isnan(im(y,x)) % unchange
+                im(y,x) = zz;
+            else%if r < probs(3) % contract
+                if isnan(im(y,x-1))
+                    im(y,x-1) = zz;
+                else
+                    break
+                end
             end
         end
     end
-end
 
-% fill in flame insides
-for y=2:32
-    for x=1:find(im(y,:)==1,1,'last')
-        if ~isnan(im(y,x)) && isnan(im(y,x+1))
-            im(y,x+1) = im(y,x);
+    % fill in flame insides
+    for y=2:32
+        for x=1:find(im(y,:)==1,1,'last')
+            if ~isnan(im(y,x)) && isnan(im(y,x+1))
+                im(y,x+1) = im(y,x);
+            end
         end
     end
-end
 
-pcolor(im)
-colormap autumn
+    if frame > 3
+        imnew = (im + imold + imold2)/3;
+
+        pcolor(imnew)
+        colormap autumn
+        caxis([0 3])
+        pause(1/50)
+%        drawnow
+%        print('-dpng', sprintf('out/%06d.png', frame-3))
+    end
+
+end
