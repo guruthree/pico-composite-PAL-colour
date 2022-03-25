@@ -25,6 +25,7 @@
  */
 
 #include <vector>
+#include <algorithm>
 
 #include "discountadafruitgfx.h"
 #include "vectormath.h"
@@ -32,6 +33,10 @@
 struct TriangleDepth {
     float depth;
     uint8_t index;
+
+	bool operator < (const TriangleDepth& rhs) {
+		return depth < rhs.depth;
+    }
 };
 
 class Object {
@@ -55,7 +60,8 @@ class TriangleRenderer {
 
         // calculate the distance away of each triangle from the screen
         void calculateDistances() {
-            for (uint8_t i = 0; i < triangles.size()*3; i+=3) {
+            tridepths.clear();
+            for (uint8_t i = 0; i < triangles.size(); i+=3) {
                 TriangleDepth td;
 
                 // this isn't really general, it assumes triangles are in pairs making up squares
@@ -68,11 +74,12 @@ class TriangleRenderer {
                         vt[triangles[i-3]].z + vt[triangles[i-2]].z + vt[triangles[i-1]].z) / 6;
                 }
 
-                td.index = i / 3;
+                td.index = i;
                 tridepths.push_back(td);
             }
 
-//            qsort(tridepths, triangles.size(), sizeof(TriangleDepth), TriangleRenderer::compare);
+			std::sort(tridepths.begin(), tridepths.end());
+
         }
 
     public:
@@ -90,22 +97,21 @@ class TriangleRenderer {
             vt.clear();
             triangles.clear();
             color.clear();
-            tridepths.clear();
         }
 
-        void addObject(Object &obj) {
+        void addObject(Object &obj, int8_t *tbuf) {
             vt.insert(vt.end(), obj.vt.begin(), obj.vt.end());
             triangles.insert(triangles.end(), obj.triangles.begin(), obj.triangles.end());
             color.insert(color.end(), obj.color.begin(), obj.color.end());
+
+			// need to offset the triangles references when adding...
         }
 
         void render(int8_t *tbuf) {
             calculateDistances();
 
             for (uint8_t i = 0; i < tridepths.size(); i++) {
-
                 uint8_t idx = tridepths[i].index;
-                idx = idx*3;
 
                 fillTriangle(tbuf, 
                     vt[triangles[idx]].x, vt[triangles[idx]].y, 
@@ -147,7 +153,7 @@ class Cube : public Object {
             v.push_back({ size/2,  size/2, -size/2}); // back top right 
             v.push_back({-size/2,  size/2, -size/2}); // back top left
 
-            triangles.reserve(12); // 6 faces * 2 triangles per face
+            triangles.reserve(12*3); // 6 faces * 2 triangles per face * 3 coordinates
             triangles = {0, 1, 2, 
                          2, 3, 0,
                          4, 5, 6, 
@@ -162,7 +168,7 @@ class Cube : public Object {
                          5, 0, 4
                          };
 
-            color.reserve(12); // 6 faces * 2 triangles per face
+            color.reserve(12*3); // 6 faces * 2 triangles per face * RGB (3)
             color = {100,   0,   0, 
                      100,   0,   0, 
                        0,   0, 100, 
@@ -208,11 +214,11 @@ class Cube : public Object {
             vt.reserve(v.size());
             for (uint8_t i = 0; i < v.size(); i++) {
                 // apply effects of movement
-                vt[i] = rot.preMultiply(v[i]);
+                vt.push_back(rot.preMultiply(v[i]));
                 vt[i] = vt[i].add(centre);
                 // apply perspective
                 vt[i] = vt[i].scale(40.0f / (-vt[i].z/2.0 + 40.0f));
-                // scale coordinates to screen coordinates
+                // scale coordinates to screen coordinates*/
                 vt[i].x = (vt[i].x/2) + 32;
                 vt[i].y += 62;
             }
@@ -221,10 +227,12 @@ class Cube : public Object {
             for (uint8_t i = 0; i < v.size(); i++) {
                 if (vt[i].x > 60) {
                     d.x = -abs(d.x);
+                    d.z = -abs(d.z); // don't continue to grow on edge of screen
                     break;
                 }
                 else if (vt[i].x < 2) {
                     d.x = abs(d.x);
+                    d.z = -abs(d.z);
                     break;
                 }
             }
@@ -233,10 +241,12 @@ class Cube : public Object {
             for (uint8_t i = 0; i < v.size(); i++) {
                 if (vt[i].y > 120) {
                     d.y = -abs(d.y);
+                    d.z = -abs(d.z);
                     break;
                 }
                 else if (vt[i].y < 2) {
                     d.y = abs(d.y);
+                    d.z = -abs(d.z);
                     break;
                }
             }
