@@ -135,6 +135,8 @@ int main() {
 
     TriangleRenderer tr;
     Cube cube(40);
+    Cube cube2(40);
+    cube2.randomise();
 
     memset(buf0, 0, BUF_SIZE);
     memset(buf1, 0, BUF_SIZE);
@@ -191,8 +193,10 @@ int main() {
                 memset(tbuf, 20, BUF_SIZE);
 
                 cube.step();
+                cube2.step();
                 tr.reset();
                 tr.addObject(cube);
+                tr.addObject(cube2);
                 tr.render(tbuf);
             }
 

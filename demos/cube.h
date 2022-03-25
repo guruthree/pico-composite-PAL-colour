@@ -99,12 +99,17 @@ class TriangleRenderer {
             color.clear();
         }
 
-        void addObject(Object &obj, int8_t *tbuf) {
+        void addObject(Object &obj) {
+            uint8_t oldvtsize = vt.size();
             vt.insert(vt.end(), obj.vt.begin(), obj.vt.end());
+            uint8_t oldtrianglessize = triangles.size();
             triangles.insert(triangles.end(), obj.triangles.begin(), obj.triangles.end());
             color.insert(color.end(), obj.color.begin(), obj.color.end());
 
 			// need to offset the triangles references when adding...
+            for (uint8_t i = oldtrianglessize; i < triangles.size(); i++) {
+                triangles[i] += oldvtsize;
+            }
         }
 
         void render(int8_t *tbuf) {
