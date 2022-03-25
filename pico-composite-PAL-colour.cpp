@@ -73,6 +73,7 @@ int8_t buf0[BUF_SIZE];
 int8_t buf1[BUF_SIZE];
 
 #include "random.h"
+#include "time.h"
 #include "testcardf.h"
 #include "raspberrypi.h"
 #include "lbm.h"
@@ -140,11 +141,16 @@ int main() {
     bool buf = false; // buf0
     int8_t *tbuf;
 
+    sleep_ms(1000);
 
     bool led = true;
     uint8_t at = 0;
-    uint32_t numframes;
+    uint64_t numframes = 0;
+    uint64_t demo_start_time = time(), frame_start_time;
+    int64_t to_sleep;
     while (1) {
+        frame_start_time = time();
+
         // flash LED ahead of calculating frame
         gpio_put(19, led = !led); 
         sleep_us(100);
@@ -152,30 +158,15 @@ int main() {
 
         // loop through some cool demos
         if (at == 0) {
-            // show test pattern for 1 second
             cp.setBuf(NULL);
-            if (numframes == 1*50) {
-                at++;
-                numframes = 0;
-            }
         }
         else if (at == 1) {
-            // show raspberry pi for 2 seconds
             cp.setBuf(raspberrypipng);
-            if (numframes == 2*50) {
-                at++;
-                numframes = 0;
-            }
         }
         else if (at == 2) {
-            // show test card f for 2 seconds
             cp.setBuf(testcardfpng);
-            if (numframes == 2*50) {
-                at++;
-                numframes = 0;
-            }
-        }
-        else {
+         }
+       else {
             // animated demos
             if (buf) {
                 tbuf = buf1;
@@ -190,7 +181,7 @@ int main() {
                 memset(tbuf, 0, BUF_SIZE);
 
                 // if floating point was faster, we'd calculate multiple frames between renders
-                lbm.timestep();
+//                lbm.timestep();
                 lbm.timestep(true);
 
                 drawlbm(lbm, tbuf);
@@ -205,20 +196,21 @@ int main() {
                 tr.render(tbuf);
             }
 
-
-            // animated for 5 seconds
-            if (numframes == 5*50) {
-                at++;
-                numframes = 0;
-            }
             cp.setBuf(tbuf);
         }
+        if (time() - demo_start_time > 2*1e6) {
+            at++;
+            demo_start_time = time();
+            if (at == 5) {
+                at = 0;
+            }
+        }
+        // 50 Hz?
+        to_sleep = 20e3 - (time() - frame_start_time);
+        if (to_sleep > 0) {
+            sleep_ms(to_sleep/1000); 
+        }
 
-
-        sleep_ms(20); // 50 Hz?
-
-        if (++at == 5) at = 0;
-        numframes++;
     }
 }
 
