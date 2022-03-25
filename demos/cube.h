@@ -184,9 +184,6 @@ class Cube : public Object {
                      };
 
             centre = {0, 0, 0};
-//    centres[i] = { float(rand() % 20) - 10.0f,
-//                   float(rand() % 40) - 20.0f,
-//                   -float(rand() % 80) };
         }
 
         // animate
@@ -250,5 +247,15 @@ class Cube : public Object {
                     break;
                }
             }
+        }
+
+        void randomise() {
+            centre = { float(rand() % 20) - 10.0f,
+                       float(rand() % 40) - 20.0f,
+                      -float(rand() % 80) };
+            dxangle = rand()*0.05f/RAND_MAX;
+            dyangle = rand()*0.05f/RAND_MAX;
+            dzangle = rand()*0.05f/RAND_MAX;
+            d = {rand()*0.25f/RAND_MAX-0.125f, rand()*0.25f/RAND_MAX-0.125f, -rand()*0.25f/RAND_MAX}; // dx, dy, dz
         }
 }; // end Cube
