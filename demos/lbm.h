@@ -341,8 +341,6 @@ class LBM {
 
 void drawlbm(LBM &lbm, int8_t *tbuf) {
 
-    memset(tbuf, 0, BUF_SIZE);
-
     uint8_t xat = 0, yat = 0, speed;
     for (uint8_t y = 2; y < lbm.NY-2; y++) { // don't draw boundaries
         xat = 0;
