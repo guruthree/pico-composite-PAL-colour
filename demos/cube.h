@@ -141,13 +141,15 @@ class TriangleRenderer {
 class Cube : public Object {
     std::vector<Vector3> v; // base verticies before animation
     Vector3 centre;
+    float size;
 
     float xangle = 0, yangle = 0, zangle = 0;
     float dxangle = 0.05f, dyangle = 0.02f, dzangle = 0.001f;
     Vector3 d = {0.10f, 0.50f, -0.25f}; // dx, dy, dz
 
     public:
-        Cube(float size) {
+        Cube(float _size) {
+            size = _size;
             v.reserve(8);
             v.push_back({-size/2, -size/2, size/2}); // front bottom left
             v.push_back({ size/2, -size/2,  size/2}); // front bottom right
@@ -262,5 +264,15 @@ class Cube : public Object {
             dyangle = rand()*0.05f/RAND_MAX;
             dzangle = rand()*0.05f/RAND_MAX;
             d = {rand()*0.25f/RAND_MAX-0.125f, rand()*0.25f/RAND_MAX-0.125f, -rand()*0.25f/RAND_MAX}; // dx, dy, dz
+        }
+
+        void collide(Cube &other) {
+            Vector3 t = centre.subtract(other.centre);
+            float dist = t.dotProduct(t);
+            if (dist < pow(size/2 + other.size/2, 2)) {
+                // the distance is less than the difference in the sizes, collide!
+                d = d.scale(-1);
+                other.d = other.d.scale(-1);
+            }
         }
 }; // end Cube

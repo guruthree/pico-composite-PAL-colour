@@ -29,8 +29,10 @@
 struct Vector3 {
     float x, y, z;
     Vector3 add(Vector3);
-    Vector3 scale(float);
     Vector3 subtract(Vector3);
+    Vector3 scale(float);
+    Vector3 scalarMultiply(Vector3);
+    float dotProduct(Vector3);
 };
 
 struct Matrix3{
@@ -89,6 +91,17 @@ Vector3 Vector3::scale(float s)
                    y * s,
                    z * s};
     return out;
+}
+Vector3 Vector3::scalarMultiply(Vector3 v)
+{
+    Vector3 out = {x * v.x,
+                   y * v.y,
+                   z * v.z};
+    return out;
+}
+float Vector3::dotProduct(Vector3 v)
+{
+    return x * v.x + y * v.y + z * v.z;
 }
 
 

@@ -194,6 +194,7 @@ int main() {
 
                 cube.step();
                 cube2.step();
+                cube.collide(cube2);
                 tr.reset();
                 tr.addObject(cube);
                 tr.addObject(cube2);
