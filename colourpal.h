@@ -437,18 +437,18 @@ class ColourPal {
                     }
                 }
                 else { // nothing's happening
-//                   memset(backbuffer_B, levelBlank, SAMPLES_COLOUR);
+//                    memset(backbuffer_B, levelBlank, SAMPLES_COLOUR);
 //                    dma_channel_wait_for_finish_blocking(dma_channel_A);
                 }
-
-                // only continue to the beginning of the loop after all the line contents have been sent
-                dma_channel_wait_for_finish_blocking(dma_channel_A);
 
                 if (++currentline == 313) {
                     currentline = 1;
                     gpio_put(18, led = !led); // this really should be flickering more? 
                     memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR); // in case anything hangs on from an array size issue
                 }
+
+                // only continue to the beginning of the loop after all the line contents have been sent
+                dma_channel_wait_for_finish_blocking(dma_channel_A);
 
             } // while (true)
         } // loop
