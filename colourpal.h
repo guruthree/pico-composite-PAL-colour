@@ -61,26 +61,31 @@ const uint32_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH -
 // no these are not the standard equations
 // part of that is integer maths, fine, but other wise...
 // no, I don't know why it's so far from the standard equations
-void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int32_t &v) {
+inline void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int32_t &v) {
     y = 5 * r / 16 + 9 * g / 16 + b / 8; // luminance
     u = (r - y);
     v = 13 * (b - y) / 16;
 }
 
-void setPixelRGB(int8_t *buf, uint8_t xcoord, uint8_t ycoord, uint8_t r, uint8_t g, uint8_t b) {
+inline void setPixelYUV(int8_t *buf, uint8_t xcoord, uint8_t ycoord, int8_t y, int8_t u, int8_t v) {
     if (xcoord >= XRESOLUTION || ycoord >= YRESOLUTION/2) {
         // clipping
         return;
     }
-
-    int32_t y = 0, u = 0, v = 0;
-    rgb2yuv(r, g, b, y, u, v);
 
     int8_t *idx = buf + (ycoord * XRESOLUTION + xcoord) * 3;
     *idx = y;
     *(idx+1) = u;
     *(idx+2) = v;
 }
+
+inline void setPixelRGB(int8_t *buf, uint8_t xcoord, uint8_t ycoord, uint8_t r, uint8_t g, uint8_t b) {
+    int32_t y = 0, u = 0, v = 0;
+    rgb2yuv(r, g, b, y, u, v);
+
+    setPixelYUV(buf, xcoord, ycoord, y, u, v);
+}
+
 
 // the line of colour data being displayed
 // put it in its own SRAM bank for most reliable fast RAM access
