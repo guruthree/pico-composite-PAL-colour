@@ -57,16 +57,6 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
 
 #include "colourpal.h"
 
-
-
-
-
-
-
-
-
-
-
 // one byte y, one byte u, one byte v, repeating for 125x64, line by line
 #define BUF_SIZE (XRESOLUTION*YRESOLUTION/2*3)
 int8_t buf0[BUF_SIZE];
@@ -78,9 +68,11 @@ int8_t buf1[BUF_SIZE];
 #include "raspberrypi.h"
 #include "lbm.h"
 #include "cube.h"
+#include "flames.h"
 
 ColourPal cp;
-LBM lbm;
+LBM lbm; // high memory requirements, so global
+Flames fire;
 
 void core1_entry();
 
@@ -129,6 +121,7 @@ int main() {
     seed_random_from_rosc();
 
     multicore_launch_core1(core1_entry);
+//    return 0;
 
     lbm.init();
     lbm.cylinder(14);
@@ -141,6 +134,9 @@ int main() {
         cubes[i] = new Cube(20);
         cubes[i]->randomise();
     }
+
+    fire.init();
+    fire.setColormap(Flames::RED);
 
     memset(buf0, 0, BUF_SIZE);
     memset(buf1, 0, BUF_SIZE);
@@ -162,6 +158,8 @@ int main() {
         sleep_us(1000);
         gpio_put(20, led = !led); 
 
+at = 6;
+
         // loop through some cool demos
         if (at == 0) {
             cp.setBuf(NULL);
@@ -171,8 +169,8 @@ int main() {
         }
         else if (at == 2) {
             cp.setBuf(testcardfpng);
-         }
-       else {
+        }
+        else {
             // animated demos
             if (buf) {
                 tbuf = buf1;
@@ -203,7 +201,7 @@ int main() {
                 tr.render(tbuf);
             }
             else if (at == 5) {
-                // show a bouncing cube
+                // show many bouncing cube
                 memset(tbuf, 20, BUF_SIZE);
 
                 for (uint8_t i = 0; i < NUM_CUBES; i++) {
@@ -222,13 +220,20 @@ int main() {
                 }
                 tr.render(tbuf);
             }
+            else if (at == 6) {
+                // animated fire
+                memset(tbuf, 0, BUF_SIZE);
+
+                fire.step();
+                fire.draw(tbuf);
+            }
 
             cp.setBuf(tbuf);
         }
         if (time() - demo_start_time > 5*1e6) {
             at++;
             demo_start_time = time();
-            if (at == 6) {
+            if (at == 7) {
                 at = 0;
             }
         }

@@ -25,8 +25,7 @@
  */
 
 // https://forums.raspberrypi.com/viewtopic.php?t=302960
-void seed_random_from_rosc()
-{
+void seed_random_from_rosc() {
   uint32_t random = 0x811c9dc5;
   uint8_t next_byte = 0;
   volatile uint32_t *rnd_reg = (uint32_t *)(ROSC_BASE + ROSC_RANDOMBIT_OFFSET);
@@ -41,4 +40,8 @@ void seed_random_from_rosc()
   }
 
   srand(random);
-} 
+}
+
+uint8_t randi(uint8_t mi, uint8_t ma) {
+    return mi + rand() * (ma - mi) / RAND_MAX;
+}
