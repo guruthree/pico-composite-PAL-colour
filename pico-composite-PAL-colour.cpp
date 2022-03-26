@@ -158,7 +158,7 @@ int main() {
         sleep_us(1000);
         gpio_put(20, led = !led); 
 
-at = 6;
+//        at = 6; // set at here to show one specific demo
 
         // loop through some cool demos
         if (at == 0) {

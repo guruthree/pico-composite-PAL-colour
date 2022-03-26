@@ -1,15 +1,3 @@
-fixed point?
-
-making sure not in flash?
-
-https://forums.raspberrypi.com/viewtopic.php?t=308794
-
-raspberry pi logo card
-
-===
-
-the timings on vsync aren't quite right?
-
 text display/FPS frame counter
 
 text title of what the demo is
@@ -17,18 +5,18 @@ text title of what the demo is
 ===
 
 demos routine:
-timed or changing when boot button is pressed
+    timed or changing when boot button is pressed
 
 slide show
     test card f, raspberry pi logo
 lattice boltzman simulation
 bouncing cube screen saver
+fire
 some sort of game?
     break out
     super hexagon
-fire?
-    # of pixels of each colour in a row?
-warp/starfield
+warp/starfield?
+flying through some 3D geometry?
 
 
 progress bar showing how long is left for the demo
