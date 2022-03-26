@@ -29,17 +29,17 @@
 clear
 pkg load statistics
 
-im = nan(32,32);
-imold = nan(32,32);
-imold2 = nan(32,32);
+im = nan(20,32);
+imold = nan(20,32);
+imold2 = nan(20,32);
 
-for frame=1:1000
+for frame=1:5%:1000
 
     if frame > 3
         imold2 = imold;
         imold = im;
     end
-    im = nan(32,32);
+    im = nan(20,32);
 
     y = 1;
 
@@ -72,11 +72,11 @@ for frame=1:1000
 
     % flame outlines
     for zz=1:3
-        for y=2:32
+        for y=2:size(im,1)
             if zz == 1
                 if y <= 5
                     probs = [0.3 0.7 1];
-                elseif y < 10
+                elseif y < 12
                     probs = [0.1 0.3 1];
                 else
                     probs = [0 0.02 1];
@@ -107,8 +107,14 @@ for frame=1:1000
             elseif r < probs(2) && isnan(im(y,x)) % unchange
                 im(y,x) = zz;
             else%if r < probs(3) % contract
-                if isnan(im(y,x+1))
-                    im(y,x+1) = zz;
+                r = rand();
+                if r < 1/3 || y < 8
+                    p = 1;
+                else
+                    p = 2;
+                end
+                if isnan(im(y,x+p))
+                    im(y,x+p) = zz;
                 else
                     break
                 end
@@ -124,8 +130,14 @@ for frame=1:1000
             elseif r < probs(2) && isnan(im(y,x)) % unchange
                 im(y,x) = zz;
             else%if r < probs(3) % contract
-                if isnan(im(y,x-1))
-                    im(y,x-1) = zz;
+                r = rand();
+                if r < 1/3 || y < 8
+                    p = 1;
+                else
+                    p = 2;
+                end
+                if isnan(im(y,x+p))
+                    im(y,x-p) = zz;
                 else
                     break
                 end
@@ -134,7 +146,7 @@ for frame=1:1000
     end
 
     % fill in flame insides
-    for y=2:32
+    for y=2:size(im,1)
         for x=1:find(im(y,:)==1,1,'last')
             if ~isnan(im(y,x)) && isnan(im(y,x+1))
                 im(y,x+1) = im(y,x);
@@ -143,12 +155,13 @@ for frame=1:1000
     end
 
     if frame > 3
-        imnew = (im + imold + imold2)/3;
+        imnew = (im + imold + imold2);
+%         imnew(imnew > 1) = imnew(imnew > 1) - 0.25;
 
         pcolor(imnew)
-        colormap autumn
-        caxis([0 3])
-        pause(1/50)
+        colormap autumn % red channel is sold, green goes from 0 to 1 (red to yellow)
+        caxis([0 9])
+%         pause(1/50)
 %        drawnow
 %        print('-dpng', sprintf('out/%06d.png', frame-3))
     end
