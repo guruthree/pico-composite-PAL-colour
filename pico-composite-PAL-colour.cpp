@@ -101,9 +101,9 @@ int main() {
     gpio_put(19, 1); // G
     gpio_put(20, 1); // B
 
-    gpio_put(20, 0); // B
+    gpio_put(19, 0); // G
     sleep_ms(1000);
-    gpio_put(20, 1); // B
+    gpio_put(19, 1); // G
 
     // a pin out to use to check timings
 //    gpio_init(26); // Tiny2040 A0
@@ -134,9 +134,13 @@ int main() {
     lbm.cylinder(14);
 
     TriangleRenderer tr;
-    Cube cube(40);
-    Cube cube2(40);
-    cube2.randomise();
+
+    #define NUM_CUBES 10
+    Cube* cubes[NUM_CUBES];
+    for (uint8_t i = 0; i < NUM_CUBES; i++) {
+        cubes[i] = new Cube(20);
+        cubes[i]->randomise();
+    }
 
     memset(buf0, 0, BUF_SIZE);
     memset(buf1, 0, BUF_SIZE);
@@ -154,9 +158,9 @@ int main() {
         frame_start_time = time();
 
         // flash LED ahead of calculating frame
-        gpio_put(19, led = !led); 
-        sleep_us(100);
-        gpio_put(19, led = !led); 
+        gpio_put(20, led = !led); 
+        sleep_us(1000);
+        gpio_put(20, led = !led); 
 
         // loop through some cool demos
         if (at == 0) {
@@ -192,21 +196,39 @@ int main() {
                 // show a bouncing cube
                 memset(tbuf, 20, BUF_SIZE);
 
-                cube.step();
-                cube2.step();
-                cube.collide(cube2);
+                cubes[0]->step();
+
                 tr.reset();
-                tr.addObject(cube);
-                tr.addObject(cube2);
+                tr.addObject(*cubes[0]);
+                tr.render(tbuf);
+            }
+            else if (at == 5) {
+                // show a bouncing cube
+                memset(tbuf, 20, BUF_SIZE);
+
+                for (uint8_t i = 0; i < NUM_CUBES; i++) {
+                    cubes[i]->step();
+                }
+
+                for (uint8_t i = 0; i < NUM_CUBES; i++) {
+                    for (uint8_t j = i+1; j < NUM_CUBES; j++) {
+                        cubes[i]->collide(*cubes[j]);
+                    }
+                }
+
+                tr.reset();
+                for (uint8_t i = 0; i < NUM_CUBES; i++) {
+                    tr.addObject(*cubes[i]);
+                }
                 tr.render(tbuf);
             }
 
             cp.setBuf(tbuf);
         }
-        if (time() - demo_start_time > 2*1e6) {
+        if (time() - demo_start_time > 5*1e6) {
             at++;
             demo_start_time = time();
-            if (at == 5) {
+            if (at == 6) {
                 at = 0;
             }
         }

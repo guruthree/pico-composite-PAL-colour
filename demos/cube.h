@@ -32,7 +32,7 @@
 
 struct TriangleDepth {
     float depth;
-    uint8_t index;
+    uint16_t index;
 
 	bool operator < (const TriangleDepth& rhs) {
 		return depth < rhs.depth;
@@ -43,7 +43,7 @@ class Object {
 
     public:
         std::vector<Vector3> vt; // verticies for rendering
-        std::vector<uint8_t> triangles;
+        std::vector<uint16_t> triangles;
         std::vector<uint8_t> color;
 
         Object() {}
@@ -53,7 +53,7 @@ class TriangleRenderer {
 
     private:
         std::vector<Vector3> vt; // verticies
-        std::vector<uint8_t> triangles;
+        std::vector<uint16_t> triangles;
         std::vector<uint8_t> color;
 
         std::vector<TriangleDepth> tridepths;
@@ -61,7 +61,7 @@ class TriangleRenderer {
         // calculate the distance away of each triangle from the screen
         void calculateDistances() {
             tridepths.clear();
-            for (uint8_t i = 0; i < triangles.size(); i+=3) {
+            for (uint16_t i = 0; i < triangles.size(); i+=3) {
                 TriangleDepth td;
 
                 // this isn't really general, it assumes triangles are in pairs making up squares
@@ -85,14 +85,6 @@ class TriangleRenderer {
     public:
         TriangleRenderer() {}
 
-        static int compare (const void* _a, const void* _b) {
-            TriangleDepth *a = (TriangleDepth*)_a;
-            TriangleDepth *b = (TriangleDepth*)_b;
-            if (a->depth == b->depth) return 0;
-            else if (a->depth < b->depth) return -1;
-            else return 1;
-        }
-
         void reset() {
             vt.clear();
             triangles.clear();
@@ -100,14 +92,14 @@ class TriangleRenderer {
         }
 
         void addObject(Object &obj) {
-            uint8_t oldvtsize = vt.size();
+            uint16_t oldvtsize = vt.size();
             vt.insert(vt.end(), obj.vt.begin(), obj.vt.end());
-            uint8_t oldtrianglessize = triangles.size();
+            uint16_t oldtrianglessize = triangles.size();
             triangles.insert(triangles.end(), obj.triangles.begin(), obj.triangles.end());
             color.insert(color.end(), obj.color.begin(), obj.color.end());
 
 			// need to offset the triangles references when adding...
-            for (uint8_t i = oldtrianglessize; i < triangles.size(); i++) {
+            for (uint16_t i = oldtrianglessize; i < triangles.size(); i++) {
                 triangles[i] += oldvtsize;
             }
         }
@@ -115,8 +107,8 @@ class TriangleRenderer {
         void render(int8_t *tbuf) {
             calculateDistances();
 
-            for (uint8_t i = 0; i < tridepths.size(); i++) {
-                uint8_t idx = tridepths[i].index;
+            for (uint16_t i = 0; i < tridepths.size(); i++) {
+                uint16_t idx = tridepths[i].index;
 
                 fillTriangle(tbuf, 
                     vt[triangles[idx]].x, vt[triangles[idx]].y, 

@@ -6,6 +6,13 @@ https://forums.raspberrypi.com/viewtopic.php?t=308794
 
 raspberry pi logo card
 
+===
+
+the timings on vsync aren't quite right?
+
+text display/FPS frame counter
+
+text title of what the demo is
 
 ===
 
@@ -22,3 +29,6 @@ some sort of game?
 fire?
     # of pixels of each colour in a row?
 warp/starfield
+
+
+progress bar showing how long is left for the demo
