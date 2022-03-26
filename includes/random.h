@@ -42,6 +42,6 @@ void seed_random_from_rosc() {
   srand(random);
 }
 
-uint8_t randi(uint8_t mi, uint8_t ma) {
-    return mi + rand() * (ma - mi) / RAND_MAX;
+inline uint8_t randi(uint8_t mi, uint8_t ma) {
+    return mi + rand() % (ma - mi);
 }
