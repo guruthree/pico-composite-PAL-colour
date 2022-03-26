@@ -136,7 +136,8 @@ int main() {
     }
 
     fire.init();
-    fire.setColormap(Flames::RED);
+    Flames::COLOUR_SCHEME firecmap = Flames::RED;
+    fire.setColormap(firecmap);
 
     memset(buf0, 0, BUF_SIZE);
     memset(buf1, 0, BUF_SIZE);
@@ -192,7 +193,7 @@ int main() {
             }
             else if (at == 4) {
                 // show a bouncing cube
-                memset(tbuf, 20, BUF_SIZE);
+                memset(tbuf, 15, BUF_SIZE);
 
                 cubes[0]->step();
 
@@ -202,7 +203,7 @@ int main() {
             }
             else if (at == 5) {
                 // show many bouncing cube
-                memset(tbuf, 20, BUF_SIZE);
+                memset(tbuf, 15, BUF_SIZE);
 
                 for (uint8_t i = 0; i < NUM_CUBES; i++) {
                     cubes[i]->step();
@@ -234,6 +235,13 @@ int main() {
             at++;
             demo_start_time = time();
             if (at == 7) {
+                if (firecmap == Flames::RED)
+                    firecmap = Flames::PURPLE;
+                else if (firecmap == Flames::PURPLE)
+                    firecmap = Flames::BLUE;
+                else if (firecmap == Flames::BLUE)
+                    firecmap = Flames::RED;
+                fire.setColormap(firecmap);
                 at = 0;
             }
         }

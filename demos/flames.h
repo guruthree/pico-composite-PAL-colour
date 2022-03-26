@@ -28,7 +28,7 @@ class Flames {
 
     public:
 
-        enum COLOUR_SCHEME { RED, GREEN, BLUE };
+        enum COLOUR_SCHEME { RED, BLUE, PURPLE };
 
     private:
 
@@ -269,19 +269,44 @@ class Flames {
 
             switch (scheme) {
                 case BLUE:
-                    // to be written...
-                case GREEN:
-                    // to be written...
-                default:
-                case RED:
+                    // green inside, blue outside
+                    for (uint8_t i = 0; i < NUM_COLOURS; i++) {
+                        colourmap[i][2] = (120*(NUM_COLOURS-i))/NUM_COLOURS;
+                    }
+                    for (uint8_t i = 0; i < NUM_COLOURS; i++) {
+                        colourmap[i][1] = (120*i)/NUM_COLOURS;
+                    }
+                    for (uint8_t i = 1; i < NUM_COLOURS/3; i++) {
+                        colourmap[i][2] = (120*i)/(NUM_COLOURS/3);
+                    }
+                    break;
+
+                case PURPLE:
+                    // white inside, purple outside
                     for (uint8_t i = 0; i < NUM_COLOURS; i++) {
                         colourmap[i][0] = 120;
+                        colourmap[i][2] = 120;
                     }
                     for (uint8_t i = 0; i < NUM_COLOURS; i++) {
                         colourmap[i][1] = (120*i)/NUM_COLOURS;
                     }
                     for (uint8_t i = 1; i < NUM_COLOURS/2; i++) {
                         colourmap[i][0] = (120*i)/(NUM_COLOURS/2);
+                        colourmap[i][2] = (120*i)/(NUM_COLOURS/2);
+                    }
+                    break;
+
+                default:
+                case RED:
+                    // yellow inside, red outside
+                    for (uint8_t i = 0; i < NUM_COLOURS; i++) {
+                        colourmap[i][0] = 120;
+                    }
+                    for (uint8_t i = 0; i < NUM_COLOURS; i++) {
+                        colourmap[i][1] = (120*i)/NUM_COLOURS;
+                    }
+                    for (uint8_t i = 1; i < NUM_COLOURS/3; i++) {
+                        colourmap[i][0] = (120*i)/(NUM_COLOURS/3);
                     }
                     break;
             }
