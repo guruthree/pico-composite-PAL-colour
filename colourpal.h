@@ -56,6 +56,12 @@ const uint32_t SAMPLES_COLOUR = EFFECTIVE_XRESOLUTION * SAMPLES_PER_PIXEL; // 26
 const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_PER_LINE - SAMPLES_COLOUR; // 1568
 const uint32_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_OFF; //    the samples at the end of signal right before front porch
 
+// this should be 32 and 32, but load on core 0 slows core 1 down so that
+// the extra timing from rendering one fewer pixel across is needed
+const uint8_t PIXELS_A = 31; // how many pixels are processed during sync
+// const uint8_t PIXELS_A = 26; // without doubling
+const uint8_t PIXELS_B = 31; // how many pixels are processed during colour
+// const uint8_t PIXELS_B = 52; // without doubling
 
 // convert to YUV for PAL encoding, RGB should be 0-127
 // no these are not the standard equations
@@ -362,8 +368,7 @@ class ColourPal {
                             dmavfactor = -1; // next up is odd
                         }
                         if (currentline == YDATA_START-1 && buf != NULL) {
-                            writepixels(dmavfactor, backbuffer_B, 0, 30);
-//                            writepixels(dmavfactor, backbuffer_B, 0, 26); // without line doubling
+                            writepixels(dmavfactor, backbuffer_B, 0, PIXELS_A);
                         }
                         dma_channel_wait_for_finish_blocking(dma_channel_A);
                         dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
@@ -385,8 +390,7 @@ class ColourPal {
 
                         // if there's a buffer to show, compute a few lines here while we wait
                         if (buf != NULL) {
-                            writepixels(dmavfactor, backbuffer_B, 0, 31); // 28 us
-//                            writepixels(dmavfactor, backbuffer_B, 0, 26); // 20 us (without line doubling)
+                            writepixels(dmavfactor, backbuffer_B, 0, PIXELS_A); // 28 us
                         }
 
                         dma_channel_wait_for_finish_blocking(dma_channel_A); // 24 us
@@ -437,8 +441,7 @@ class ColourPal {
                     }
                     else {
                         // calculate data to show
-                        writepixels(dmavfactor, backbuffer_B, 31, 31+31); // 30 us
-//                        writepixels(dmavfactor, backbuffer_B, 26, 26+52); // 40 us (wihtout line doubling)
+                        writepixels(dmavfactor, backbuffer_B, PIXELS_A, PIXELS_A+PIXELS_B); // 30 us
                     }
                 }
                 else { // nothing's happening
