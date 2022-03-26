@@ -78,7 +78,7 @@ class Flames {
 
         void generateFlames(uint8_t (&im)[DOWN][ACROSS]) {
             memset(im, 0, ACROSS*DOWN*sizeof(uint8_t));
-            uint8_t y = 1;
+            uint8_t y = 0;
 
             // the fire starts from the bottom
             uint8_t oldx = 2 + randi(5, 7);
@@ -124,15 +124,31 @@ class Flames {
         }
 
         void draw(int8_t *tbuf) {
-            for (uint8_t y = 0; y < DOWN; y++) {
+            uint8_t xat = 0, yat = YRESOLUTION/2-1; // it's 250 lines, but 125 in the matrix...
+            for (uint8_t y = 0; y < 1; y++) { //DOWN; y++) {
                 for (uint8_t x = 0; x < ACROSS; x++) {
                     uint8_t val = 0;
                     // sum up the history of fire
                     for (uint8_t i = 0; i < HISTORY; i++) {
                         val += allim[i][y][x];
                     }
-                    setPixelYUV(tbuf, x, y, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+
+//                    setPixelYUV(tbuf, x, y, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+
+                    // simple nearest neighbour interpolation?
+                    setPixelYUV(tbuf, xat, yat, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat, yat-1, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat, yat-2, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+
+                    setPixelYUV(tbuf, xat+1, yat, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat+1, yat-1, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat+1, yat-2, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat+1, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+
+                    xat += 2;
                 }
+                yat -= 4;
             }
         }
 
