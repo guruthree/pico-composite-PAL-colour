@@ -1,6 +1,10 @@
 text display/FPS frame counter
 
-text title of what the demo is
+===
+
+each y resolution line is used twice
+I think this means we're computing the same thing twice...
+could we use that time with more buffer cache to show more in the x-direction?
 
 ===
 

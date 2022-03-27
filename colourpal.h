@@ -28,9 +28,9 @@
 #define XRESOLUTION 64
 // #define XRESOLUTION 78 // without line doubling
 #define EFFECTIVE_XRESOLUTION (XRESOLUTION*2) // stretch from anamorphic
-#define YRESOLUTION 250 // line count, this is divided by two for the size of the display buffer
+#define YRESOLUTION 125 // this is multipled by two for the line count
 #define YDATA_START 43 // line number
-#define YDATA_END (YDATA_START + YRESOLUTION)
+#define YDATA_END (YDATA_START + YRESOLUTION*2)
 
 // timings - these are here as consts because the division needs to process
 // a horizontal line is 64 microseconds
@@ -74,7 +74,7 @@ inline void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int
 }
 
 inline void setPixelYUV(int8_t *buf, uint8_t xcoord, uint8_t ycoord, int8_t y, int8_t u, int8_t v) {
-    if (xcoord >= XRESOLUTION || ycoord >= YRESOLUTION/2) {
+    if (xcoord >= XRESOLUTION || ycoord >= YRESOLUTION) {
         // clipping
         return;
     }
@@ -297,7 +297,7 @@ class ColourPal {
             int32_t y = 0, u = 0, v = 0;
 
             // pointer to the buffer data we're displaying
-            // note the Y resolution stored is 1/2 the YRESOLUTION, so the offset is divided by 2
+            // note that YRESOLUTION is 1/2 the number of lines, so the offset (line #) is divided by 2
             // the currentline is +1 because we're preparing for the next line
             int8_t *idx = buf + (((currentline - YDATA_START + 1) / 2) * XRESOLUTION + startpixel) * 3;
             uint32_t dmai2; // position in line

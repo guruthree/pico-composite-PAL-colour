@@ -58,7 +58,7 @@ inline void dmacpy(uint8_t *dst, uint8_t *src, uint16_t size) {
 #include "colourpal.h"
 
 // one byte y, one byte u, one byte v, repeating for 125x64, line by line
-#define BUF_SIZE (XRESOLUTION*YRESOLUTION/2*3)
+#define BUF_SIZE (XRESOLUTION*YRESOLUTION*3)
 int8_t buf0[BUF_SIZE];
 int8_t buf1[BUF_SIZE];
 
@@ -148,7 +148,7 @@ int main() {
     sleep_ms(1000);
 
     bool led = true;
-    uint8_t at = 0;
+    uint8_t at = 1;
     uint64_t numframes = 0;
     uint64_t demo_start_time = time(), frame_start_time;
     int64_t to_sleep;
@@ -160,78 +160,98 @@ int main() {
         sleep_us(1000);
         gpio_put(20, led = !led); 
 
-//        at = 6; // set at here to show one specific demo
+//        at = 4; // set at here to show one specific demo
+
+        // swap between two buffers
+        if (buf) {
+            tbuf = buf1;
+        }
+        else {
+            tbuf = buf0;
+        }
+        buf = !buf;
 
         // loop through some cool demos
         if (at == 0) {
-            cp.setBuf(NULL);
+            memset(tbuf, 0, BUF_SIZE);
+            writeStr(tbuf, 0, 0, "Hello World!", 100, 100, 100);
         }
         else if (at == 1) {
-            cp.setBuf(raspberrypipng);
+            memcpy(tbuf, raspberrypipng, BUF_SIZE);
         }
         else if (at == 2) {
-            cp.setBuf(testcardfpng);
+            memcpy(tbuf, testcardfpng, BUF_SIZE);
         }
-        else {
-            // animated demos
-            if (buf) {
-                tbuf = buf1;
-            }
-            else {
-                tbuf = buf0;
-            }
-            buf = !buf;
+        else if (at == 3) {
+            // show the LBM simulation
+            memset(tbuf, 0, BUF_SIZE);
 
-            if (at == 3) {
-                // show the LBM simulation
-                memset(tbuf, 0, BUF_SIZE);
+            // if floating point was faster, we'd calculate multiple frames between renders
+            lbm.timestep(true);
 
-                // if floating point was faster, we'd calculate multiple frames between renders
-//                lbm.timestep();
-                lbm.timestep(true);
-
-                drawlbm(lbm, tbuf);
-            }
-            else if (at == 4) {
-                // show a bouncing cube
-                memset(tbuf, 15, BUF_SIZE);
-
-                cubes[0]->step();
-
-                tr.reset();
-                tr.addObject(*cubes[0]);
-                tr.render(tbuf);
-            }
-            else if (at == 5) {
-                // show many bouncing cube
-                memset(tbuf, 15, BUF_SIZE);
-
-                for (uint8_t i = 0; i < NUM_CUBES; i++) {
-                    cubes[i]->step();
-                }
-
-                for (uint8_t i = 0; i < NUM_CUBES; i++) {
-                    for (uint8_t j = i+1; j < NUM_CUBES; j++) {
-                        cubes[i]->collide(*cubes[j]);
-                    }
-                }
-
-                tr.reset();
-                for (uint8_t i = 0; i < NUM_CUBES; i++) {
-                    tr.addObject(*cubes[i]);
-                }
-                tr.render(tbuf);
-            }
-            else if (at == 6) {
-                // animated fire
-                memset(tbuf, 0, BUF_SIZE);
-
-                fire.step();
-                fire.draw(tbuf);
-            }
-
-            cp.setBuf(tbuf);
+            drawlbm(lbm, tbuf);
+            writeStr(tbuf, 1, 1, "Lattice", 0, 0, 0);
+            writeStr(tbuf, 1, 7, "Boltzmann", 0, 0, 0);
+            writeStr(tbuf, 1, 13, "CFD Simulation", 0, 0, 0);
         }
+        else if (at == 4) {
+            // show a bouncing cube
+            memset(tbuf, 0, BUF_SIZE);
+            drawLineRGB(tbuf, 0, 0, XRESOLUTION-1, 0, 35, 35, 35);
+            drawLineRGB(tbuf, 0, YRESOLUTION-1, XRESOLUTION-1, YRESOLUTION-1, 35, 35, 35);
+            drawLineRGB(tbuf, 0, 1, 0, YRESOLUTION-2, 35, 35, 35);
+            // - 2 because some of the buffer is actualyl chopped off...
+            drawLineRGB(tbuf, XRESOLUTION-3, 1, XRESOLUTION-3, YRESOLUTION-2, 35, 35, 35);
+
+            cubes[0]->step();
+
+            tr.reset();
+            tr.addObject(*cubes[0]);
+            tr.render(tbuf);
+            writeStr(tbuf, 1, 1, " One Cube", 100, 100, 100);
+        }
+        else if (at == 5) {
+            // show many bouncing cube
+            memset(tbuf, 0, BUF_SIZE);
+            drawLineRGB(tbuf, 0, 0, XRESOLUTION-1, 0, 35, 35, 35);
+            drawLineRGB(tbuf, 0, YRESOLUTION-1, XRESOLUTION-1, YRESOLUTION-1, 35, 35, 35);
+            drawLineRGB(tbuf, 0, 1, 0, YRESOLUTION-2, 35, 35, 35);
+            // - 2 because some of the buffer is actualyl chopped off...
+            drawLineRGB(tbuf, XRESOLUTION-3, 1, XRESOLUTION-3, YRESOLUTION-2, 35, 35, 35);
+
+            for (uint8_t i = 0; i < NUM_CUBES; i++) {
+                cubes[i]->step();
+            }
+
+            for (uint8_t i = 0; i < NUM_CUBES; i++) {
+                for (uint8_t j = i+1; j < NUM_CUBES; j++) {
+                    cubes[i]->collide(*cubes[j]);
+                }
+            }
+
+            tr.reset();
+            for (uint8_t i = 0; i < NUM_CUBES; i++) {
+                tr.addObject(*cubes[i]);
+            }
+            tr.render(tbuf);
+            writeStr(tbuf, 1, 1, "Many Cubes", 100, 100, 100);
+        }
+        else if (at == 6) {
+            // animated fire
+            memset(tbuf, 0, BUF_SIZE);
+
+            fire.step();
+            fire.draw(tbuf);
+            if (firecmap == Flames::RED)
+                writeStr(tbuf, 1, 1, "Red Flames", 100, 0, 0);
+            else if (firecmap == Flames::PURPLE)
+                writeStr(tbuf, 1, 1, "Purple Flames", 100, 0, 100);
+            else if (firecmap == Flames::BLUE)
+                writeStr(tbuf, 1, 1, "Blue Flames", 0, 0, 100);
+        }
+
+        cp.setBuf(tbuf);
+        
         if (time() - demo_start_time > 5*1e6) {
             at++;
             demo_start_time = time();
@@ -243,7 +263,7 @@ int main() {
                 else if (firecmap == Flames::BLUE)
                     firecmap = Flames::RED;
                 fire.setColormap(firecmap);
-                at = 0;
+                at = 1;
             }
         }
         // 50 Hz?

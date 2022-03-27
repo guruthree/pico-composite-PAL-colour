@@ -236,7 +236,7 @@ class Flames {
         }
 
         void draw(int8_t *tbuf) {
-            uint8_t xat, yat = YRESOLUTION/2-1; // it's 250 lines, but 125 in the matrix...
+            uint8_t xat, yat = YRESOLUTION-1; // it's 250 lines, but 125 in the matrix...
             for (uint8_t y = 0; y < DOWN; y++) {
                 xat = 0;
                 for (uint8_t x = 0; x < ACROSS; x++) {
