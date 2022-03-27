@@ -47,14 +47,14 @@ const uint32_t SAMPLES_BURST = 2.71 * DAC_FREQ / 1e6; // 180
 const uint32_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
 
 // where we are copying data to in the scanline
-const uint32_t SAMPLES_OFF = (8.24*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
+const uint32_t SAMPLES_OFF = (8.24*(DAC_FREQ / 1000000)); // 548, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
 //const uint32_t SAMPLES_OFF = (1.025*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
 const uint32_t SAMPLES_PER_PIXEL = 16; // was 20
 const uint32_t SAMPLES_COLOUR = EFFECTIVE_XRESOLUTION * SAMPLES_PER_PIXEL; // 2688 points of the colour data to send
 
 //const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH + SAMPLES_OFF + <whatever is leftover at the end of the colour data>; // 816
 const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_PER_LINE - SAMPLES_COLOUR; // 1568
-const uint32_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_OFF; //    the samples at the end of signal right before front porch
+const uint32_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH - SAMPLES_HSYNC - SAMPLES_BACK_PORCH - SAMPLES_OFF; // the samples at the end of signal right before front porch
 
 // this should be 32 and 32, but load on core 0 slows core 1 down so that
 // the extra timing from rendering one fewer pixel across is needed
@@ -321,7 +321,7 @@ class ColourPal {
                     // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
                     // original equation: levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
                     backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7);
-                    backbuffer_B[dmai2+(SAMPLES_PER_PIXEL-1)] = backbuffer_B[dmai2]; // line doubliong
+                    backbuffer_B[dmai2+(SAMPLES_PER_PIXEL-1)] = backbuffer_B[dmai2]; // line doubling
                 }
 //                dmacpy(backbuffer_B+dmai2-1, backbuffer_B+i, 16);
             }
