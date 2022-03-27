@@ -201,7 +201,7 @@ int main() {
             drawLineRGB(tbuf, 0, YRESOLUTION-1, XRESOLUTION-1, YRESOLUTION-1, 35, 35, 35);
             drawLineRGB(tbuf, 0, 1, 0, YRESOLUTION-2, 35, 35, 35);
             // - 2 because some of the buffer is actualyl chopped off...
-            drawLineRGB(tbuf, XRESOLUTION-3, 1, XRESOLUTION-3, YRESOLUTION-2, 35, 35, 35);
+            drawLineRGB(tbuf, XRESOLUTION-2, 1, XRESOLUTION-2, YRESOLUTION-2, 35, 35, 35);
 
             cubes[0]->step();
 
@@ -217,7 +217,7 @@ int main() {
             drawLineRGB(tbuf, 0, YRESOLUTION-1, XRESOLUTION-1, YRESOLUTION-1, 35, 35, 35);
             drawLineRGB(tbuf, 0, 1, 0, YRESOLUTION-2, 35, 35, 35);
             // - 2 because some of the buffer is actualyl chopped off...
-            drawLineRGB(tbuf, XRESOLUTION-3, 1, XRESOLUTION-3, YRESOLUTION-2, 35, 35, 35);
+            drawLineRGB(tbuf, XRESOLUTION-2, 1, XRESOLUTION-2, YRESOLUTION-2, 35, 35, 35);
 
             for (uint8_t i = 0; i < NUM_CUBES; i++) {
                 cubes[i]->step();

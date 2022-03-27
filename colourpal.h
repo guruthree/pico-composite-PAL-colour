@@ -58,7 +58,7 @@ const uint32_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH -
 
 // this should be 32 and 32, but load on core 0 slows core 1 down so that
 // the extra timing from rendering one fewer pixel across is needed
-const uint8_t PIXELS_A = 31; // how many pixels are processed during sync
+const uint8_t PIXELS_A = 32; // how many pixels are processed during sync
 // const uint8_t PIXELS_A = 26; // without doubling
 const uint8_t PIXELS_B = 31; // how many pixels are processed during colour
 // const uint8_t PIXELS_B = 52; // without doubling
@@ -141,6 +141,7 @@ class ColourPal {
 
         int8_t* buf = NULL; // image data we are displaying
         uint32_t currentline = 1;
+        bool oddline = true;
         bool led = false;
 
     public:
@@ -358,8 +359,8 @@ class ColourPal {
                         dma_channel_set_read_addr(dma_channel_A, line4_B, true);
                         break;
 
-                    case 6 ... YDATA_START-1:
-                        if (currentline & 1) { // odd
+                    case 6 ... YDATA_START-2:
+                        if (oddline) { // odd
                             dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
                             dmavfactor = 1; // next up is even
                         }
@@ -367,16 +368,34 @@ class ColourPal {
                             dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
                             dmavfactor = -1; // next up is odd
                         }
-                        if (currentline == YDATA_START-1 && buf != NULL) {
-                            writepixels(dmavfactor, backbuffer_B, 0, PIXELS_A);
-                        }
                         dma_channel_wait_for_finish_blocking(dma_channel_A);
                         dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
                         dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                         break;
 
+                    case YDATA_START-1: // special case we need to prep for the next line where colour starts
+                        if ((YDATA_START-1) & 1) { // odd - since YDATA_START is a define the compiler here should prune the unused code path
+                            dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
+                            dmavfactor = 1; // next up is even
+                            writepixels(dmavfactor, backbuffer_B, 0, PIXELS_A);
+                            dma_channel_wait_for_finish_blocking(dma_channel_A);
+                            dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                            dma_channel_set_read_addr(dma_channel_A, line6_B, true);
+                            writepixels(dmavfactor, backbuffer_B, PIXELS_A, PIXELS_A+PIXELS_B); // 30 us
+                        }
+                        else {
+                            dma_channel_set_read_addr(dma_channel_A, line6even_A, true);
+                            dmavfactor = -1; // next up is odd
+                            writepixels(dmavfactor, backbuffer_B, 0, PIXELS_A);
+                            dma_channel_wait_for_finish_blocking(dma_channel_A);
+                            dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
+                            dma_channel_set_read_addr(dma_channel_A, line6_B, true);
+                            writepixels(dmavfactor, backbuffer_B, PIXELS_A, PIXELS_A+PIXELS_B); // 30 us
+                        }
+                        break;
+
                     case YDATA_START ... YDATA_END-1: // this range is inclusive, so -1 to get the exact number of lines
-                        if (currentline & 1) { // odd
+                        if (oddline) { // odd
                             dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
                             dmavfactor = 1; // next up is even
                         }
@@ -397,10 +416,24 @@ class ColourPal {
                         dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
                         dma_channel_set_read_addr(dma_channel_A, screenbuffer_B, true);
 
+                        if (buf == NULL) {
+                            // no buffer set so show colour bars instead
+                            if (oddline) { // odd, next line is even
+                                dmacpy(backbuffer_B, colourbarsEven_B, SAMPLES_COLOUR);
+                            }
+                            else {
+                                dmacpy(backbuffer_B, colourbarsOdd_B, SAMPLES_COLOUR);
+                            }
+                        }
+                        else {
+                            // calculate data to show
+                            writepixels(dmavfactor, backbuffer_B, PIXELS_A, PIXELS_A+PIXELS_B); // 30 us
+                        }
+
                         break;
 
                     case YDATA_END ...309:
-                        if (currentline & 1) { // odd
+                        if (oddline) { // odd
                             dma_channel_set_read_addr(dma_channel_A, line6odd_A, true);
                             dma_channel_wait_for_finish_blocking(dma_channel_A);
                             dma_channel_set_trans_count(dma_channel_A, SAMPLES_COLOUR / 4, false);
@@ -426,34 +459,13 @@ class ColourPal {
                         break;
                 }
 
-                // next up is a picture line, for some reason it's faster to check
-                // based on line number than dmavfactor
-                if (currentline >= YDATA_START-1 && currentline <= YDATA_END-2) {
-
-                    if (buf == NULL) {
-                        // no buffer set so show colour bars instead
-                        if (currentline & 1) { // odd, next line is even
-                            dmacpy(backbuffer_B, colourbarsEven_B, SAMPLES_COLOUR);
-                        }
-                        else {
-                            dmacpy(backbuffer_B, colourbarsOdd_B, SAMPLES_COLOUR);
-                        }
-                    }
-                    else {
-                        // calculate data to show
-                        writepixels(dmavfactor, backbuffer_B, PIXELS_A, PIXELS_A+PIXELS_B); // 30 us
-                    }
-                }
-                else { // nothing's happening
-//                    memset(backbuffer_B, levelBlank, SAMPLES_COLOUR);
-//                    dma_channel_wait_for_finish_blocking(dma_channel_A);
-                }
-
                 if (++currentline == 313) {
                     currentline = 1;
+                    oddline = false;
                     gpio_put(18, led = !led); // this really should be flickering more? 
                     memset(  backbuffer_B, levelBlank, SAMPLES_COLOUR); // in case anything hangs on from an array size issue
                 }
+                oddline = !oddline; // setting it ahead of the next line while we wait
 
                 // only continue to the beginning of the loop after all the line contents have been sent
                 dma_channel_wait_for_finish_blocking(dma_channel_A);

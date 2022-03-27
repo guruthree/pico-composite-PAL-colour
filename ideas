@@ -1,10 +1,12 @@
 text display/FPS frame counter
 
+button press
+
 ===
 
-each y resolution line is used twice
-I think this means we're computing the same thing twice...
-could we use that time with more buffer cache to show more in the x-direction?
+we can jigger the x-resolution if we do every other pixel across and down and alternate
+if we work it right the previous line's pixel information is left behind
+however in general this adds a bit of shimmer and dulls colours
 
 ===
 
