@@ -250,6 +250,11 @@ int main() {
                 writeStr(tbuf, 1, 1, "Blue Flames", 0, 0, 100);
         }
 
+        char buf[20];
+        memset(buf, 0, sizeof(buf));
+        sprintf(buf, "%4.1f ms", ((time() - frame_start_time)/1e3));
+        writeStr(tbuf, 35, 119, buf, 20, 20, 120);
+
         cp.setBuf(tbuf);
         
         if (time() - demo_start_time > 5*1e6) {
