@@ -1,12 +1,4 @@
-text display/FPS frame counter
-
 button press
-
-===
-
-we can jigger the x-resolution if we do every other pixel across and down and alternate
-if we work it right the previous line's pixel information is left behind
-however in general this adds a bit of shimmer and dulls colours
 
 ===
 
@@ -22,7 +14,11 @@ some sort of game?
     break out
     super hexagon
 warp/starfield?
-flying through some 3D geometry?
-
-
-progress bar showing how long is left for the demo
+flying through some 3D geometry/cliffs?
+    grid squares
+video?
+    bad apple?
+    something anime/cell-shaded?
+    stargate render?
+    badger badger
+spinning dots with motion trails

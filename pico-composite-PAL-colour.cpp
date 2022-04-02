@@ -177,10 +177,10 @@ int main() {
             writeStr(tbuf, 0, 0, "Hello World!", 100, 100, 100);
         }
         else if (at == 1) {
-            memcpy(tbuf, raspberrypipng, BUF_SIZE);
+            memcpy(tbuf, testcardfpng, BUF_SIZE);
         }
         else if (at == 2) {
-            memcpy(tbuf, testcardfpng, BUF_SIZE);
+            memcpy(tbuf, raspberrypipng, BUF_SIZE);
         }
         else if (at == 3) {
             // show the LBM simulation
@@ -250,10 +250,12 @@ int main() {
                 writeStr(tbuf, 1, 1, "Blue Flames", 0, 0, 100);
         }
 
-        char buf[20];
-        memset(buf, 0, sizeof(buf));
-        sprintf(buf, "%4.1f ms", ((time() - frame_start_time)/1e3));
-        writeStr(tbuf, 35, 119, buf, 20, 20, 120);
+        if (at > 2) {
+            char buf[20];
+            memset(buf, 0, sizeof(buf));
+            sprintf(buf, "%4.1f ms", ((time() - frame_start_time)/1e3));
+            writeStr(tbuf, 35, 119, buf, 20, 20, 120);
+        }
 
         cp.setBuf(tbuf);
         

@@ -392,6 +392,7 @@ class ColourPal {
                             dma_channel_set_read_addr(dma_channel_A, line6_B, true);
                             writepixels(dmavfactor, backbuffer_B, PIXELS_A, PIXELS_A+PIXELS_B); // 30 us
                         }
+                        // we don't process the colour bars here so the first row of colourbar pixels will be garbage
                         break;
 
                     case YDATA_START ... YDATA_END-1: // this range is inclusive, so -1 to get the exact number of lines
