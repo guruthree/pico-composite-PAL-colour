@@ -73,8 +73,8 @@ inline void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int
     v = 13 * (b - y) / 16;
 }
 
-inline void setPixelYUV(int8_t *buf, uint8_t xcoord, uint8_t ycoord, int8_t y, int8_t u, int8_t v) {
-    if (xcoord >= XRESOLUTION || ycoord >= YRESOLUTION) {
+inline void setPixelYUV(int8_t *buf, int32_t xcoord, int32_t ycoord, int8_t y, int8_t u, int8_t v) {
+    if (xcoord >= XRESOLUTION || ycoord >= YRESOLUTION || xcoord < 0 || ycoord < 0) {
         // clipping
         return;
     }
@@ -85,7 +85,11 @@ inline void setPixelYUV(int8_t *buf, uint8_t xcoord, uint8_t ycoord, int8_t y, i
     *(idx+2) = v;
 }
 
-inline void setPixelRGB(int8_t *buf, uint8_t xcoord, uint8_t ycoord, uint8_t r, uint8_t g, uint8_t b) {
+inline void setPixelRGB(int8_t *buf, int32_t xcoord, int32_t ycoord, uint8_t r, uint8_t g, uint8_t b) {
+    if (xcoord >= XRESOLUTION || ycoord >= YRESOLUTION || xcoord < 0 || ycoord < 0) {
+        // clipping
+        return;
+    }
     int32_t y = 0, u = 0, v = 0;
     rgb2yuv(r, g, b, y, u, v);
 

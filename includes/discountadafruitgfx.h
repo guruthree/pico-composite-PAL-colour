@@ -26,6 +26,9 @@
     POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef DISCOUNTGFX
+#define DISCOUNTGFX
+
 template<typename T>
 inline void swapInt(T &a, T &b) {
     T t;
@@ -38,8 +41,8 @@ inline void swapInt(T &a, T &b) {
 
 
 // reference: Adafruit_GFX::writeLine()
-void drawLineRGB(int8_t *buf, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t r, uint8_t g, uint8_t b) {
-    int8_t steep = abs(y1 - y0) > abs(x1- x0);
+void drawLineRGB(int8_t *buf, int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint8_t r, uint8_t g, uint8_t b) {
+    int32_t steep = abs(y1 - y0) > abs(x1- x0);
     if (steep) {
         swapInt(x0, y0);
         swapInt(x1, y1);
@@ -50,11 +53,11 @@ void drawLineRGB(int8_t *buf, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, ui
         swapInt(y0, y1);
     }
 
-    int8_t dx = x1 - x0;
-    int8_t dy = abs(y1 - y0);
+    int32_t dx = x1 - x0;
+    int32_t dy = abs(y1 - y0);
 
-    int8_t err = dx / 2;
-    int8_t ystep;
+    int32_t err = dx / 2;
+    int32_t ystep;
 
 
     if (y0 < y1) {
@@ -167,3 +170,5 @@ void fillTriangle(int8_t *buf, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, u
 
 
 }
+
+#endif

@@ -26,6 +26,9 @@
 
 // thanks to @Blayzeing for his help with this!
 
+#ifndef VECTORMATH
+#define VECTORMATH
+
 struct Vector3 {
     float x, y, z;
     Vector3 add(Vector3);
@@ -106,6 +109,7 @@ float Vector3::dotProduct(Vector3 v)
 
 
 // rotation matrix, angles about rotate(x, y, z)
+// note angles are in RADIANS
 Matrix3 Matrix3::getRotationMatrix(float alpha, float beta, float gamma) 
 {
     Matrix3 Rz = {cosf(gamma), -sinf(gamma), 0,
@@ -133,3 +137,4 @@ Matrix3 Matrix3::getPerspMatrix(Vector3 sp) {
     Matrix3 invRot = rotate(camRot)
 }*/
 
+#endif

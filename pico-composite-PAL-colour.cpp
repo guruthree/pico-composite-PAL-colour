@@ -70,10 +70,13 @@ int8_t buf1[BUF_SIZE];
 #include "lbm.h"
 #include "cube.h"
 #include "flames.h"
+#include "cliffs.h"
 
 ColourPal cp;
-LBM lbm; // high memory requirements, so global
+#define NUM_DEMOS 8
+LBM lbm; // high memory requirements (big arrays), so global
 Flames fire;
+Cliffs cliffs;
 
 void core1_entry();
 
@@ -140,6 +143,8 @@ int main() {
     Flames::COLOUR_SCHEME firecmap = Flames::RED;
     fire.setColormap(firecmap);
 
+    cliffs.init();
+
     memset(buf0, 0, BUF_SIZE);
     memset(buf1, 0, BUF_SIZE);
     bool buf = false; // buf0
@@ -160,7 +165,7 @@ int main() {
         sleep_us(1000);
         gpio_put(20, led = !led); 
 
-//        at = 4; // set at here to show one specific demo
+//        at = 7; // set at here to show one specific demo
 
         // swap between two buffers
         if (buf) {
@@ -249,6 +254,14 @@ int main() {
             else if (firecmap == Flames::BLUE)
                 writeStr(tbuf, 1, 1, "Blue Flames", 0, 0, 100);
         }
+        else if (at == 7) {
+            // flying through the cliffs
+            memset(tbuf, 0, BUF_SIZE);
+
+            cliffs.step();
+            cliffs.render(tbuf);
+            writeStr(tbuf, 1, 1, "Synth Cliffs", 0, 0, 0);
+        }
 
         if (at > 2) {
             char buf[20];
@@ -270,6 +283,8 @@ int main() {
                 else if (firecmap == Flames::BLUE)
                     firecmap = Flames::RED;
                 fire.setColormap(firecmap);
+            }
+            if (at == NUM_DEMOS) {
                 at = 1;
             }
         }
