@@ -41,17 +41,35 @@ class Cliffs {
 
         float zoffset = 0; // shuffle the grid towards the screen
         float dzstep = 1.2f; // rate at which it approaches the screen
+        uint32_t sat = 0; // where we are in the undulating landscape
+
+        float basecliff[ACROSS] = {80, 80, 80, 5, 1, 0, 1, -2, 1, 0, 1, 5, 80, 80, 80};
+
+        // generate an interesting across
+        void generateAcross(uint8_t y) {
+            if (y == 0 || y > DOWN-1) {
+                return;
+            }
+
+            float d;
+            for (uint8_t x = 0; x < ACROSS; x++) {
+                d = basecliff[x] - thecliff[y-1][x];
+                thecliff[y][x] = thecliff[y-1][x] + randi(-5, 5) + d/4;
+            }
+
+            for (uint8_t x = 4; x < ACROSS-3; x++) {
+                thecliff[y][x] + sinf(sat / 10.0f)*2;
+            }
+        }
 
     public:
         Cliffs() {}
 
         void init() {
-            float basecliff[ACROSS] = {80, 80, 80, 5, 1, 0, 1, -2, 1, 0, 1, 5, 80, 80, 80};
-
             for (uint8_t x = 0; x < ACROSS; x++) {
                 for (uint8_t y = 0; y < DOWN; y++) {
                     // this bugs out when it's 0? maybe it gets optimised out?
-                    thecliff[y][x] = basecliff[x]/2 - 40;
+                    thecliff[y][x] = basecliff[x];
                 }
             }
         }
@@ -60,22 +78,36 @@ class Cliffs {
             zoffset += dzstep;
             if (zoffset >= 20) {
                 zoffset -= 20;
-            }
+                sat++; //
 
+                // the closest points are now off screen
+                // so shuffle down and update of the furthest away geometry 
+                for (uint8_t y = 0; y < DOWN-1; y++) {
+                    for (uint8_t x = 0; x < ACROSS; x++) {
+                        thecliff[y][x] = thecliff[y+1][x];
+                    }
+                }
+//                for (uint8_t x = 0; x < ACROSS; x++) {
+//                    thecliff[DOWN-1][x] = 0;
+//                }
+                generateAcross(DOWN-1);
 
-            // update h coordinates when hitting draw distance
-
-            // refresh verticies coordinates array to be transformed again
-            for (uint8_t x = 0; x < ACROSS; x++) {
-                for (uint8_t y = 0; y < DOWN; y++) {
-//                    vt[y][x] = {(float(x)-ACROSS/2)*10, -thecliff[y][x], -(float(y)-3*DOWN/4)*10 + zoffset};
-                    vt[y][x] = {(float(x)-ACROSS/2)*20, -thecliff[y][x], -(float(y)-2)*20 + zoffset};
+                // add a random hill at the second to last position
+                // (2nd last so that it won't mess up the generation of the next across)
+                if (rand() > RAND_MAX*0.92f) {
+                    thecliff[DOWN-2][randi(4, ACROSS-4)] += 35;
                 }
             }
+
         }
 
         void render(int8_t *tbuf) {
-            // reset vt
+            // refresh verticies coordinates array to be transformed again
+            for (uint8_t x = 0; x < ACROSS; x++) {
+                for (uint8_t y = 0; y < DOWN; y++) {
+                    vt[y][x] = {(float(x)-ACROSS/2)*20, -(thecliff[y][x]/2 - 40), -(float(y)-3)*20 + zoffset};
+                }
+            }
 
             Matrix3 rot = Matrix3::getRotationMatrix(-10.0f/180.0f*M_PI, 0, 0);
 
@@ -101,17 +133,15 @@ class Cliffs {
 
 
             // loop through x and y and draw the lines
-            for (uint8_t x = 0; x < ACROSS-1; x++) {
+            for (uint8_t x = 0; x < ACROSS; x++) {
                 for (uint8_t y = 0; y < DOWN-1; y++) {
-//            for (uint8_t x = 0; x < 12; x++){
-//                for (uint8_t y = 0; y < 2; y++){
 
                     // don't show any lines that are entirely outside of screen space or start and end outside of screen space
                     if ((vt[y][x].x < 0 && vt[y][x+1].x < 0) || (vt[y][x].x > XRESOLUTION && vt[y][x+1].x > XRESOLUTION) || 
                         (vt[y][x].y < 0 && vt[y][x+1].y < 0) || (vt[y][x].y > YRESOLUTION && vt[y][x+1].y > YRESOLUTION) || 
                         (vt[y][x].x < 0 && vt[y][x+1].x > YRESOLUTION) || (vt[y][x].y < 0 && vt[y][x+1].y > YRESOLUTION)) {
                     }
-                    else {
+                    else if (x < ACROSS-1) {
                         drawLineRGB(tbuf, vt[y][x].x, vt[y][x].y, vt[y][x+1].x, vt[y][x+1].y, 120, 20, 100);
                     }
 
@@ -122,43 +152,8 @@ class Cliffs {
                     else {
                         drawLineRGB(tbuf, vt[y][x].x, vt[y][x].y, vt[y+1][x].x, vt[y+1][x].y, 120, 20, 100);
                     }
+
                 }
             }
-
-/*uint8_t x = 5;
-uint8_t y = 0;
-
-            char sbuf[200];
-            memset(sbuf, 0, sizeof(sbuf));
-            sprintf(sbuf, "%0.2f", vt[y][x].x);
-            writeStr(tbuf, 0, 05, sbuf, 100, 0, 0);
-            sprintf(sbuf, "%0.2f", vt[y][x].y);
-            writeStr(tbuf, 0, 11, sbuf, 100, 0, 0);
-//            sprintf(sbuf, "%0.2f", vt[y][x].z);
-//            writeStr(tbuf, 0, 17, sbuf, 100, 0, 0);
-
-/*            sprintf(sbuf, "%0.2f", vt[y][x+1].x);
-            writeStr(tbuf, 0, 23, sbuf, 100, 0, 0);
-            sprintf(sbuf, "%0.2f", vt[y][x+1].y);
-            writeStr(tbuf, 0, 29, sbuf, 100, 0, 0);
-            sprintf(sbuf, "%0.2f", vt[y][x+1].z);
-            writeStr(tbuf, 0, 35, sbuf, 100, 0, 0);
-
-            sprintf(sbuf, "%0.2f", vt[y+1][x].x);
-            writeStr(tbuf, 30, 05, sbuf, 100, 0, 0);
-            sprintf(sbuf, "%0.2f", vt[y+1][x].y);
-            writeStr(tbuf, 30, 11, sbuf, 100, 0, 0);
-//            sprintf(sbuf, "%0.2f", vt[y+1][x].z);
-//            writeStr(tbuf, 30, 17, sbuf, 100, 0, 0);
-
-/*            sprintf(sbuf, "%0.2f", vt[y+1][x+1].x);
-            writeStr(tbuf, 30, 23, sbuf, 100, 0, 0);
-            sprintf(sbuf, "%0.2f", vt[y+1][x+1].y);
-            writeStr(tbuf, 30, 29, sbuf, 100, 0, 0);
-            sprintf(sbuf, "%0.2f", vt[y+1][x+1].z);
-            writeStr(tbuf, 30, 35, sbuf, 100, 0, 0);*/
-
-//            drawLineRGB(tbuf, vt[y][x].x, vt[y][x].y, vt[y][x].x, vt[y][x].y+5, 100, 100, 100);
-
         }
 };
