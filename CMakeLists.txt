@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.13)
 
 # these need to be early to be honored on the first cmake
-set(PICO_BOARD "pimoroni_tiny2040" CACHE STRING "" FORCE)
+#set(PICO_BOARD "pimoroni_tiny2040" CACHE STRING "" FORCE)
+set(PICO_BOARD "pico" CACHE STRING "" FORCE)
+
+#set(PICO_COPY_TO_RAM 1  CACHE STRING "" FORCE)
 
 include(pico_sdk_import.cmake)
 
@@ -34,6 +37,10 @@ target_link_libraries(pico-composite-PAL-colour
 )
 pico_add_extra_outputs(pico-composite-PAL-colour)
 
-pico_enable_stdio_usb(pico-composite-PAL-colour 1)
+pico_enable_stdio_usb(pico-composite-PAL-colour 0)
 pico_enable_stdio_uart(pico-composite-PAL-colour 0)
 
+# for CPU clocks above 266 MHz, slow down access to the flash
+pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
+target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
+pico_set_boot_stage2(pico-composite-PAL-colour slower_boot2)

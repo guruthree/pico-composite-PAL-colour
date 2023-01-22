@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2022 guruthree
+ * Copyright (c) 2022-2023 guruthree
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,12 +37,43 @@
 #include "hardware/irq.h"
 #include "hardware/clocks.h"
 #include "hardware/regs/rosc.h"
+#include "hardware/vreg.h"
 #include "dac.pio.h"
 
+// pico-sdk/src/rp2_common/hardware_clocks/scripts/vcocalc.py
+// fprintf('./vcocalc.py %0.4f >> ~/Desktop/possible_clocks\n', PAL*(1:120)')
 // replace with const?
-#define CLOCK_SPEED 266e6
-#define CLOCK_DIV 3.99974249778092305618 // clock divided by carrier divided by 15
-#define DAC_FREQ (CLOCK_SPEED / CLOCK_DIV) // this should be
+// 368? 399? 501?
+//#define CLOCK_SPEED 133e6
+//#define CLOCK_DIV 1.99987158719282231978 // registers as secam?
+
+//#define CLOCK_SPEED 266e6
+//#define CLOCK_DIV 3.99974249778092305618 // 15 samples, clock divided by carrier divided by 15
+//#define CLOCK_DIV 2.99980738078923359069*0.9969 // 20 samples, *0.996, 0.9963 to 0.9966, 0.9967 to 0.9968 colours definetely odd (colour burst too red?)
+//#define CLOCK_DIV 4.99967896798205568842*0.995 // 12 samples, *0.995
+//#define CLOCK_DIV 11.99922952315693436276*0.9922 // 5 samples, *0.992, 0.9918-0.9919, 0.9922
+
+//#define CLOCK_SPEED float(319200000)
+//#define CLOCK_DIV (5.99961476157846629320/0.991) // 12 samples 991
+//#define CLOCK_DIV 8.99942214236770077207*0.9912 // 8 samples 991, 986, 9861, 9879, 9878, 9859, 9911, 9912, 9913
+//#define CLOCK_DIV 9.07932015977370987514 // (8.99942214236770077207/0.9912) looks really solid!
+
+// based on 9912
+#define CLOCK_SPEED 321e6
+#define CLOCK_DIV (9*1.004) // works with samples per pixel 8.0125
+
+//#define CLOCK_DIV float(6)
+//#define CLOCK_DIV 2.99980738078923314660 // 24 samples
+
+//#define CLOCK_SPEED 159.6e6
+//#define CLOCK_DIV 3.99974317438564463956
+
+#define DAC_FREQ float(CLOCK_SPEED / CLOCK_DIV) // this should be
+
+//#define VREG_VSEL VREG_VOLTAGE_1_15
+//#define VREG_VSEL VREG_VOLTAGE_1_20
+//#define VREG_VSEL VREG_VOLTAGE_1_25
+#define VREG_VSEL VREG_VOLTAGE_1_30
 
 // fast copies of uint8_t arrays, array length needs to be multiple of 4
 int dma_chan32;
@@ -81,8 +112,9 @@ Cliffs cliffs;
 void core1_entry();
 
 int main() {
+	vreg_set_voltage(VREG_VSEL);
 //    stdio_init_all();
-    set_sys_clock_khz(CLOCK_SPEED/1e3, true);
+    set_sys_clock_khz(CLOCK_SPEED/1000.0f, true);
 
 //    sleep_ms(1500);
 //    printf("hello world\n");
@@ -132,7 +164,7 @@ int main() {
 
     TriangleRenderer tr;
 
-    #define NUM_CUBES 10
+    #define NUM_CUBES 8
     Cube* cubes[NUM_CUBES];
     for (uint8_t i = 0; i < NUM_CUBES; i++) {
         cubes[i] = new Cube(20);
@@ -179,7 +211,17 @@ int main() {
         // loop through some cool demos
         if (at == 0) {
             memset(tbuf, 0, BUF_SIZE);
-            writeStr(tbuf, 0, 0, "Hello World!", 100, 100, 100);
+            writeStr(tbuf, 7, 0, "Hello World!", 100, 100, 100);
+
+            drawLineRGB(tbuf, 0, 20, XRESOLUTION-1, 20, 127, 0, 0);
+            drawLineRGB(tbuf, 0, 21, XRESOLUTION-1, 21, 127, 0, 0);
+            drawLineRGB(tbuf, 0, 22, XRESOLUTION-1, 22, 127, 0, 0);
+            drawLineRGB(tbuf, 0, 40, XRESOLUTION-1, 40, 0, 127, 0);
+            drawLineRGB(tbuf, 0, 41, XRESOLUTION-1, 41, 0, 127, 0);
+            drawLineRGB(tbuf, 0, 42, XRESOLUTION-1, 42, 0, 127, 0);
+            drawLineRGB(tbuf, 0, 60, XRESOLUTION-1, 60, 0, 0, 127);
+            drawLineRGB(tbuf, 0, 61, XRESOLUTION-1, 61, 0, 0, 127);
+            drawLineRGB(tbuf, 0, 62, XRESOLUTION-1, 62, 0, 0, 127);
         }
         else if (at == 1) {
             memcpy(tbuf, testcardfpng, BUF_SIZE);
@@ -195,34 +237,34 @@ int main() {
             lbm.timestep(true);
 
             drawlbm(lbm, tbuf);
-            writeStr(tbuf, 1, 1, "Lattice", 0, 0, 0);
-            writeStr(tbuf, 1, 7, "Boltzmann", 0, 0, 0);
-            writeStr(tbuf, 1, 13, "CFD Simulation", 0, 0, 0);
+            writeStr(tbuf, 7, 1, "Lattice", 0, 0, 0);
+            writeStr(tbuf, 7, 7, "Boltzmann", 0, 0, 0);
+            writeStr(tbuf, 7, 13, "CFD Simulation", 0, 0, 0);
         }
         else if (at == 4) {
             // show a bouncing cube
             memset(tbuf, 0, BUF_SIZE);
-            drawLineRGB(tbuf, 0, 0, XRESOLUTION-1, 0, 35, 35, 35);
-            drawLineRGB(tbuf, 0, YRESOLUTION-1, XRESOLUTION-1, YRESOLUTION-1, 35, 35, 35);
-            drawLineRGB(tbuf, 0, 1, 0, YRESOLUTION-2, 35, 35, 35);
+            drawLineRGB(tbuf, 0, 0, XRESOLUTION-1, 0, 50, 50, 50);
+            drawLineRGB(tbuf, 0, YRESOLUTION-1, XRESOLUTION-1, YRESOLUTION-1, 50, 50, 50);
+            drawLineRGB(tbuf, 0, 1, 0, YRESOLUTION-2, 50, 50, 50);
             // - 2 because some of the buffer is actualyl chopped off...
-            drawLineRGB(tbuf, XRESOLUTION-2, 1, XRESOLUTION-2, YRESOLUTION-2, 35, 35, 35);
+            drawLineRGB(tbuf, XRESOLUTION-2, 1, XRESOLUTION-2, YRESOLUTION-2, 50, 50, 50);
 
             cubes[0]->step();
 
             tr.reset();
             tr.addObject(*cubes[0]);
             tr.render(tbuf);
-            writeStr(tbuf, 1, 1, " One Cube", 100, 100, 100);
+            writeStr(tbuf, 7, 1, " One Cube", 100, 100, 100);
         }
         else if (at == 5) {
             // show many bouncing cube
             memset(tbuf, 0, BUF_SIZE);
-            drawLineRGB(tbuf, 0, 0, XRESOLUTION-1, 0, 35, 35, 35);
-            drawLineRGB(tbuf, 0, YRESOLUTION-1, XRESOLUTION-1, YRESOLUTION-1, 35, 35, 35);
-            drawLineRGB(tbuf, 0, 1, 0, YRESOLUTION-2, 35, 35, 35);
+            drawLineRGB(tbuf, 0, 0, XRESOLUTION-2, 0, 50, 50, 50);
+            drawLineRGB(tbuf, 0, YRESOLUTION-1, XRESOLUTION-2, YRESOLUTION-1, 50, 50, 50);
+            drawLineRGB(tbuf, 0, 1, 0, YRESOLUTION-2, 50, 50, 50);
             // - 2 because some of the buffer is actualyl chopped off...
-            drawLineRGB(tbuf, XRESOLUTION-2, 1, XRESOLUTION-2, YRESOLUTION-2, 35, 35, 35);
+            drawLineRGB(tbuf, XRESOLUTION-2, 1, XRESOLUTION-2, YRESOLUTION-2, 50, 50, 50);
 
             for (uint8_t i = 0; i < NUM_CUBES; i++) {
                 cubes[i]->step();
@@ -239,35 +281,43 @@ int main() {
                 tr.addObject(*cubes[i]);
             }
             tr.render(tbuf);
-            writeStr(tbuf, 1, 1, "Many Cubes", 100, 100, 100);
+            writeStr(tbuf, 7, 1, "Many Cubes", 100, 100, 100);
         }
         else if (at == 6) {
             // animated fire
             memset(tbuf, 0, BUF_SIZE);
 
             fire.step();
+#if HORIZONTAL_DOUBLING == 1
+            // CPU load is very high without doubling, a little pause here reduces flicker
+            sleep_us(8000);
+#endif
             fire.draw(tbuf);
             if (firecmap == Flames::RED)
-                writeStr(tbuf, 1, 1, "Red Flames", 100, 0, 0);
+                writeStr(tbuf, 7, 1, "Red Flames", 100, 0, 0);
             else if (firecmap == Flames::PURPLE)
-                writeStr(tbuf, 1, 1, "Purple Flames", 100, 0, 100);
+                writeStr(tbuf, 7, 1, "Purple Flames", 100, 0, 100);
             else if (firecmap == Flames::BLUE)
-                writeStr(tbuf, 1, 1, "Blue Flames", 0, 0, 100);
+                writeStr(tbuf, 7, 1, "Blue Flames", 0, 0, 100);
         }
         else if (at == 7) {
             // flying through the cliffs
             memset(tbuf, 0, BUF_SIZE);
 
             cliffs.step();
+#if HORIZONTAL_DOUBLING == 1
+            // CPU load is very high without doubling, a little pause here reduces flicker
+            sleep_us(5000);
+#endif
             cliffs.render(tbuf);
-            writeStr(tbuf, 1, 1, "Synth Cliffs", 0, 0, 0);
+            writeStr(tbuf, 7, 1, "Synth Cliffs", 0, 0, 0);
         }
 
         if (at > 2) {
             char buf[20];
             memset(buf, 0, sizeof(buf));
             sprintf(buf, "%4.1f ms", ((time() - frame_start_time)/1e3));
-            writeStr(tbuf, 35, 119, buf, 20, 20, 120);
+            writeStr(tbuf, XRESOLUTION-35, 119, buf, 20, 20, 120);
         }
 
         cp.setBuf(tbuf);

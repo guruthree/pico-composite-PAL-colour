@@ -37,7 +37,7 @@ inline void swapInt(T &a, T &b) {
     b = t;
 }
 
-// void setPixelRGB(int8_t *buf, uint8_t xcoord, uint8_t ycoord, uint8_t r, uint8_t g, uint8_t b);
+// void setPixelRGB(int8_t *buf, uint16_t xcoord, uint16_t ycoord, uint8_t r, uint8_t g, uint8_t b);
 
 
 // reference: Adafruit_GFX::writeLine()
@@ -84,11 +84,11 @@ void drawLineRGB(int8_t *buf, int32_t x0, int32_t y0, int32_t x1, int32_t y1, ui
 
 
 // reference: Adafruit_GFX::fillTriangle
-void fillTriangle(int8_t *buf, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t r, uint8_t g, uint8_t _b) {
+void fillTriangle(int8_t *buf, int32_t x0, int32_t y0, int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint8_t r, uint8_t g, uint8_t _b) {
 
 
 
-  int8_t a, b, y, last;
+  int16_t a, b, y, last;
 
   // Sort coordinates by Y order (y2 >= y1 >= y0)
   if (y0 > y1) {
@@ -119,7 +119,7 @@ void fillTriangle(int8_t *buf, uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, u
     return;
   }
 
-  int8_t dx01 = x1 - x0, dy01 = y1 - y0, dx02 = x2 - x0, dy02 = y2 - y0,
+  int16_t dx01 = x1 - x0, dy01 = y1 - y0, dx02 = x2 - x0, dy02 = y2 - y0,
           dx12 = x2 - x1, dy12 = y2 - y1;
   int32_t sa = 0, sb = 0;
 

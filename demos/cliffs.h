@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) size/222 guruthree
+ * Copyright (c) 2022-2023 guruthree
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -116,8 +116,8 @@ class Cliffs {
                     vt[y][x] = rot.preMultiply(vt[y][x]);
                     vt[y][x] = vt[y][x].scale(40.0f / (-vt[y][x].z/2.0f + 40.0f));
                     // scale coordinates to screen coordinates
-                    vt[y][x].x = (vt[y][x].x/2) + 32;
-                    vt[y][x].y += 62.0f;
+                    vt[y][x].x = (vt[y][x].x/2) + XRESOLUTION/2.0f;
+                    vt[y][x].y += YRESOLUTION/2.0f;
                 }
             }
 

@@ -1,7 +1,7 @@
 %
 % The MIT License (MIT)
 %
-% Copyright (c) 2022 guruthree
+% Copyright (c) 2022-2023 guruthree
 %
 % Permission is hereby granted, free of charge, to any person obtaining a copy
 % of this software and associated documentation files (the "Software"), to deal
@@ -75,8 +75,8 @@ pkg load image % for octave
     
     function [y, u, v] = rgb2yuv(r, g, b)
         y = 5 * r / 16 + 9 * g / 16 + b / 8;
-        u = (r - y);
-        v = 13 * (b - y) / 16;
+        v = (b - y) / 2;
+        u = 13 * (r - y) / 16;
     end
 
 end

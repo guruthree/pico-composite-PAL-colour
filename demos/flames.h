@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) size/222 guruthree
+ * Copyright (c) 2022-2023 guruthree
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,11 +32,11 @@ class Flames {
 
     private:
 
-        static const uint8_t ACROSS = 30;
+        static const uint8_t ACROSS = 26;
         static const uint8_t DOWN = 20;
 
         // the output frame is the mean of these frames
-        static const uint8_t HISTORY = 10;
+        static const uint8_t HISTORY = 8;
 
         uint8_t allim[HISTORY][DOWN][ACROSS];
         uint8_t imat = 0;
@@ -236,9 +236,9 @@ class Flames {
         }
 
         void draw(int8_t *tbuf) {
-            uint8_t xat, yat = YRESOLUTION-1; // it's 250 lines, but 125 in the matrix...
+            uint16_t xat, yat = YRESOLUTION-10; // it's 250 lines, but 125 in the matrix...
             for (uint8_t y = 0; y < DOWN; y++) {
-                xat = 0;
+                xat = XRESOLUTION/2 - (ACROSS/2)*4/HORIZONTAL_DOUBLING;
                 for (uint8_t x = 0; x < ACROSS; x++) {
                     uint8_t val = 0;
                     // sum up the history of fire
@@ -257,7 +257,21 @@ class Flames {
                     setPixelYUV(tbuf, xat+1, yat-2, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
                     setPixelYUV(tbuf, xat+1, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
 
+#if HORIZONTAL_DOUBLING == 2
                     xat += 2;
+#else
+                    setPixelYUV(tbuf, xat+2, yat, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat+2, yat-1, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat+2, yat-2, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat+2, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+
+                    setPixelYUV(tbuf, xat+3, yat, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat+3, yat-1, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat+3, yat-2, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUV(tbuf, xat+3, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+
+                    xat += 4;
+#endif
                 }
                 yat -= 4;
             }

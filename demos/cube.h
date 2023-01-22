@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) size/222 guruthree
+ * Copyright (c) 2022-2023 guruthree
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -208,20 +208,20 @@ class Cube : public Object {
 
             vt.clear();
             vt.reserve(v.size());
-            for (uint8_t i = 0; i < v.size(); i++) {
+            for (uint16_t i = 0; i < v.size(); i++) {
                 // apply effects of movement
                 vt.push_back(rot.preMultiply(v[i]));
                 vt[i] = vt[i].add(centre);
                 // apply perspective
                 vt[i] = vt[i].scale(40.0f / (-vt[i].z/2.0 + 40.0f));
                 // scale coordinates to screen coordinates*/
-                vt[i].x = (vt[i].x/2) + 32;
-                vt[i].y += 62;
+                vt[i].x = (vt[i].x/HORIZONTAL_DOUBLING) + XRESOLUTION / 2;
+                vt[i].y += YRESOLUTION / 2;
             }
 
             // bounce off the sides of the screen
-            for (uint8_t i = 0; i < v.size(); i++) {
-                if (vt[i].x > 60) {
+            for (uint16_t i = 0; i < v.size(); i++) {
+                if (vt[i].x > XRESOLUTION-4) {
                     d.x = -abs(d.x);
                     d.z = -abs(d.z); // don't continue to grow on edge of screen
                     break;
@@ -234,8 +234,8 @@ class Cube : public Object {
             }
 
             // bounce off the top and bottom of the screen
-            for (uint8_t i = 0; i < v.size(); i++) {
-                if (vt[i].y > 120) {
+            for (uint16_t i = 0; i < v.size(); i++) {
+                if (vt[i].y > YRESOLUTION-4) {
                     d.y = -abs(d.y);
                     d.z = -abs(d.z);
                     break;
@@ -249,13 +249,13 @@ class Cube : public Object {
         }
 
         void randomise() {
-            centre = { float(rand() % 20) - 10.0f,
-                       float(rand() % 40) - 20.0f,
-                      -float(rand() % 80) };
-            dxangle = rand()*0.05f/RAND_MAX;
-            dyangle = rand()*0.05f/RAND_MAX;
-            dzangle = rand()*0.05f/RAND_MAX;
-            d = {rand()*0.25f/RAND_MAX-0.125f, rand()*0.25f/RAND_MAX-0.125f, -rand()*0.25f/RAND_MAX}; // dx, dy, dz
+            centre = { float(randi(0, 3*XRESOLUTION/4) - 3*XRESOLUTION/8),
+                       float(randi(0, 3*YRESOLUTION/4) - 3*YRESOLUTION/8),
+                      -float(randi(10, 80)) };
+            dxangle = rand()*0.04f/RAND_MAX; // how fast they rotate
+            dyangle = rand()*0.04f/RAND_MAX;
+            dzangle = rand()*0.04f/RAND_MAX;
+            d = {rand()*2.f/RAND_MAX-1.f, rand()*0.8f/RAND_MAX-0.4f, rand()*0.25f/RAND_MAX-0.125f}; // dx, dy, dz (speed)
         }
 
         void collide(Cube &other) {

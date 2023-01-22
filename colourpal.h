@@ -2,7 +2,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2022 guruthree
+ * Copyright (c) 2022-2023 guruthree
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,10 +24,17 @@
  *
  */
 
+#define HORIZONTAL_DOUBLING 1 // without x-resolution doubling
+//#define HORIZONTAL_DOUBLING 2
+
 // replace with const int?
-#define XRESOLUTION 64
-// #define XRESOLUTION 78 // without line doubling
-#define EFFECTIVE_XRESOLUTION (XRESOLUTION*2) // stretch from anamorphic
+#if HORIZONTAL_DOUBLING == 2
+    #define XRESOLUTION 114
+#else
+    #define XRESOLUTION 164  // doubling
+#endif
+#define EFFECTIVE_XRESOLUTION (XRESOLUTION*HORIZONTAL_DOUBLING) // stretch from anamorphic
+
 #define YRESOLUTION 125 // this is multipled by two for the line count
 #define YDATA_START 43 // line number
 #define YDATA_END (YDATA_START + YRESOLUTION*2)
@@ -36,7 +43,7 @@
 // a horizontal line is 64 microseconds
 // this HAS to be divisible by 4 to use 32-bit DMA transfers
 // replace with static constexpr?
-const uint32_t SAMPLES_PER_LINE = 64 * DAC_FREQ / 1e6; // 4256
+const uint32_t SAMPLES_PER_LINE = 4*((int)((64 * DAC_FREQ / 1e6)/4)); // 4256 this HAS to be a multiple of 4!
 const uint32_t SAMPLES_GAP = 4.693 * DAC_FREQ / 1e6; // 312
 const uint32_t SAMPLES_SHORT_PULSE = 2.347 * DAC_FREQ / 1e6; // 156
 const uint32_t SAMPLES_HSYNC = 4.693 * DAC_FREQ / 1e6; // 312
@@ -47,9 +54,15 @@ const uint32_t SAMPLES_BURST = 2.71 * DAC_FREQ / 1e6; // 180
 const uint32_t SAMPLES_HALFLINE = SAMPLES_PER_LINE / 2; // 2128
 
 // where we are copying data to in the scanline
-const uint32_t SAMPLES_OFF = (8.24*(DAC_FREQ / 1000000)); // 548, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
-//const uint32_t SAMPLES_OFF = (1.025*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
-const uint32_t SAMPLES_PER_PIXEL = 16; // was 20
+
+#if HORIZONTAL_DOUBLING == 2
+    const uint32_t SAMPLES_OFF = (1.025*(DAC_FREQ / 1000000)); // 68, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
+#else
+    const uint32_t SAMPLES_OFF = (8.24*(DAC_FREQ / 1000000)); // 548, delay after sync before colour data starts // MAX 8.535 us (frontporch + deadspace)
+#endif
+const float COLOUR_CARRIER = 4433618.75; // this ideally needs to divide in some fashion into the DAC_FREQ
+//const uint32_t SAMPLES_PER_PIXEL = 16; // was 16 for 266 MHz, 12 for 319.2?
+const uint32_t SAMPLES_PER_PIXEL = (CLOCK_SPEED/CLOCK_DIV/COLOUR_CARRIER);
 const uint32_t SAMPLES_COLOUR = EFFECTIVE_XRESOLUTION * SAMPLES_PER_PIXEL; // 2688 points of the colour data to send
 
 //const uint32_t SAMPLES_SYNC_PORCHES = SAMPLES_FRONT_PORCH + SAMPLES_HSYNC + SAMPLES_BACK_PORCH + SAMPLES_OFF + <whatever is leftover at the end of the colour data>; // 816
@@ -58,10 +71,16 @@ const uint32_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH -
 
 // this should be 32 and 32, but load on core 0 slows core 1 down so that
 // the extra timing from rendering one fewer pixel across is needed
-const uint8_t PIXELS_A = 32; // how many pixels are processed during sync
-// const uint8_t PIXELS_A = 26; // without doubling
-const uint8_t PIXELS_B = 31; // how many pixels are processed during colour
-// const uint8_t PIXELS_B = 52; // without doubling
+
+#if HORIZONTAL_DOUBLING == 2
+    const uint8_t PIXELS_A = 24; // how many pixels are processed during sync
+#else
+    const uint8_t PIXELS_A = 64; // without doubling
+#endif
+
+const uint8_t PIXELS_B = XRESOLUTION - PIXELS_A;
+//const uint8_t PIXELS_B = 93; // how many pixels are processed during colour
+//const uint8_t PIXELS_B = 100; // without doubling
 
 // convert to YUV for PAL encoding, RGB should be 0-127
 // no these are not the standard equations
@@ -69,8 +88,8 @@ const uint8_t PIXELS_B = 31; // how many pixels are processed during colour
 // no, I don't know why it's so far from the standard equations
 inline void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int32_t &v) {
     y = 5 * r / 16 + 9 * g / 16 + b / 8; // luminance
-    u = (r - y);
-    v = 13 * (b - y) / 16;
+    v = (b - y) / 2;
+    u = 13 * (r - y) / 16;
 }
 
 inline void setPixelYUV(int8_t *buf, int32_t xcoord, int32_t ycoord, int8_t y, int8_t u, int8_t v) {
@@ -132,10 +151,8 @@ class ColourPal {
         // within SRAM banks 5 and 6 (scratch x and y) to avoid contention with writing to one while the other
         // is read by the DMA... maybe...
 
-        // for colour
-        const float COLOUR_CARRIER = 4433618.75; // this ideally needs to divide in some fashion into the DAC_FREQ
         // the pre-calculated colour carrier
-        int32_t __attribute__((__aligned__(4))) SIN3[24]; // aligned might not do anything here
+        int32_t  __attribute__((__aligned__(4))) ALLSIN2[SAMPLES_COLOUR+SAMPLES_PER_PIXEL];  // aligned might not do anything here
         // the colour burst
         uint8_t burstOdd[SAMPLES_BURST]; // for odd lines
         uint8_t burstEven[SAMPLES_BURST]; // for even lines
@@ -184,15 +201,18 @@ class ColourPal {
             resetLines();
             // pre-calculate colour burst (includes convserion to DAC voltages)
             populateBurst();
+
+            // you would think the colour carrier repeats, but because the DAC frequency doesn't
+            // we need to calculate at each position
+            // at least we can use a PI/4 offset to find the COS
+            memset(ALLSIN2+SAMPLES_PER_PIXEL, levelBlank, SAMPLES_COLOUR);
+            for (uint32_t i = 0; i < SAMPLES_COLOUR; i++) { 
+                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
+                ALLSIN2[i] = levelWhite*sinf(x);
+            }
+
             // default simple test pattern
             createColourBars();
-
-            // repeating section of colour carrier
-            // this would be 15, but is longer for the COS to be within the SIN as well
-            for (uint32_t i = 0; i < 24; i++) {
-                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
-                SIN3[i] = levelWhite*sinf(x); 
-            }
 
             // initialise front buffer
             memset(screenbuffer_B, levelBlank, SAMPLES_COLOUR);
@@ -232,8 +252,8 @@ class ColourPal {
         void populateBurst() {
             // put the colour burst in the sync data of the lines that need it
             for (uint32_t i = 0; i < SAMPLES_BURST; i++) {
-                // the + here is a really fine adjustment on the carrier?
-                float x = float(i-6.5) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
+                // the + here is a really fine adjustment on the colour phase? changing it cycles the colours of the bars
+                float x = float(i-3.5) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
                 burstOdd[i] = (levelColor*cosf(x) + levelBlank); // odd lines, with out addition it would try and be negative
                 burstEven[i] = (levelColor*sinf(x) + levelBlank); // even lines (sin vs cos gives the phase shift)
             }
@@ -270,9 +290,8 @@ class ColourPal {
 //                    rgb2yuv(0, 0, 0, y, u, v);
                     rgb2yuv(64, 64, 64, y, u, v);
 
-                float x = float(i) / DAC_FREQ * 2.0 * M_PI * COLOUR_CARRIER + (135.0 / 180.0) * M_PI;
-                int32_t COS2 = levelWhite*cosf(x); 
-                int32_t SIN2 = levelWhite*sinf(x);
+                int32_t SIN2 = ALLSIN2[i];
+                int32_t COS2 = ALLSIN2[i+2];
 
                 // odd lines of fields 1 & 2 and even lines of fields 3 & 4?
                 // +- cos is flipped...?
@@ -311,7 +330,7 @@ class ColourPal {
             int32_t *SIN3p;
             int32_t *COS3p;
 
-            for (uint32_t i = startpixel*2*(SAMPLES_PER_PIXEL-1); i < (2*(SAMPLES_PER_PIXEL-1)*endpixel); i += 2*(SAMPLES_PER_PIXEL-1)) {
+            for (uint32_t i = startpixel*HORIZONTAL_DOUBLING*(SAMPLES_PER_PIXEL); i < (HORIZONTAL_DOUBLING*(SAMPLES_PER_PIXEL)*endpixel); i += HORIZONTAL_DOUBLING*(SAMPLES_PER_PIXEL)) {
                 // a byte of y, a byte of u, a byte of v, repeat
                 // make y, u, v out of 127
                 y = (*idx++) + levelBlank; // would multiply by levelWhite, then divide by 128, so do nothing and leave it be
@@ -319,16 +338,16 @@ class ColourPal {
                 v = dmavfactor * (*(idx++));
 
                 // for each pixel back to the start of the colour carrier
-                SIN3p = &SIN3[0];
-                COS3p = &SIN3[4];
+                SIN3p = &ALLSIN2[i];
+                COS3p = &ALLSIN2[i+SAMPLES_PER_PIXEL/4];
 
-                for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL-1; dmai2++) {
-                    // with SAMPLES_PER_PIXEL-1 for the 15 pixel cycle of the carrier
+                for (dmai2 = i; dmai2 < i + SAMPLES_PER_PIXEL; dmai2++) {
                     // original equation: levelBlank + (y * levelWhite + u * SIN3[dmai2-i] + dmavfactor * v * SIN3[dmai2-i+9]) / 128;
                     backbuffer_B[dmai2] = y + ((u * (*(SIN3p++)) + v * (*(COS3p++))) >> 7);
-                    backbuffer_B[dmai2+(SAMPLES_PER_PIXEL-1)] = backbuffer_B[dmai2]; // line doubling
+#if HORIZONTAL_DOUBLING == 2
+                    backbuffer_B[dmai2+(SAMPLES_PER_PIXEL)] = backbuffer_B[dmai2]; // line doubling (pixel doubling?)
+#endif
                 }
-//                dmacpy(backbuffer_B+dmai2-1, backbuffer_B+i, 16);
             }
 //            gpio_put(26, 0); // for checking timing
         }
