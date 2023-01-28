@@ -268,6 +268,10 @@ int main() {
 
             for (uint8_t i = 0; i < NUM_CUBES; i++) {
                 cubes[i]->step();
+#if HORIZONTAL_DOUBLING == 1
+            // CPU load is very high without doubling, a little pause here reduces flicker
+            sleep_us(1000);
+#endif
             }
 
             for (uint8_t i = 0; i < NUM_CUBES; i++) {
@@ -314,10 +318,17 @@ int main() {
         }
 
         if (at > 2) {
-            char buf[20];
-            memset(buf, 0, sizeof(buf));
-            sprintf(buf, "%4.1f ms", ((time() - frame_start_time)/1e3));
-            writeStr(tbuf, XRESOLUTION-35, 119, buf, 20, 20, 120);
+            char txtbuf[20];
+            memset(txtbuf, 0, sizeof(buf));
+            sprintf(txtbuf, "%4.1f ms", ((time() - frame_start_time)/1e3));
+            writeStr(tbuf, XRESOLUTION-35, 119, txtbuf, 20, 20, 120);
+        }
+
+        // show the current "channel" (demo) number for a little bit after changing
+        if (time() - demo_start_time < 2*1e6) {
+            char txtbuf[20];
+            sprintf(txtbuf, "%d", at);
+            writeStrScaled(tbuf, XRESOLUTION-21, 9, txtbuf, 0, 100, 0, true);
         }
 
         cp.setBuf(tbuf);

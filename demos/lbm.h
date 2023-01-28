@@ -47,7 +47,7 @@ class LBM {
 
         // omega any higher and it dies?
         // 34x34, 1.85, 100
-        static constexpr float OMEGA = 1.82f, DENSITY = 0.6f, TARGET_USUM = 115.0f;
+        static constexpr float OMEGA = 1.82f, DENSITY = 0.6f, TARGET_USUM = 150.0f;
 
         static constexpr float W1 = 1.0f / 9.0f;
         static constexpr float W2 = 1.0f / 36.0f;
@@ -355,26 +355,11 @@ void drawlbm(LBM &lbm, int8_t *tbuf) {
                 speed > 63 ? speed = 63 : 1;
 
                 // simple nearest neighbour interpolation?
-                setPixelRGB(tbuf, xat, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat, yat+3, jet[speed][0], jet[speed][1], jet[speed][2]);
-
-                setPixelRGB(tbuf, xat+1, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat+1, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat+1, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat+1, yat+3, jet[speed][0], jet[speed][1], jet[speed][2]);
-
+                setPixelRGBtwoX(tbuf, xat, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
+                setPixelRGBtwoX(tbuf, xat, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
 #if HORIZONTAL_DOUBLING == 1
-                setPixelRGB(tbuf, xat+2, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat+2, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat+2, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat+2, yat+3, jet[speed][0], jet[speed][1], jet[speed][2]);
-
-                setPixelRGB(tbuf, xat+3, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat+3, yat+1, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat+3, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
-                setPixelRGB(tbuf, xat+3, yat+3, jet[speed][0], jet[speed][1], jet[speed][2]);
+                setPixelRGBtwoX(tbuf, xat+2, yat, jet[speed][0], jet[speed][1], jet[speed][2]);
+                setPixelRGBtwoX(tbuf, xat+2, yat+2, jet[speed][0], jet[speed][1], jet[speed][2]);
 #endif
             }
 #if HORIZONTAL_DOUBLING == 2

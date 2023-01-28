@@ -134,8 +134,7 @@ uint16_t font[32*3-2] = {
 // 101
 // 101
 
-
-void writeStr(int8_t *buf, uint8_t xcoord, uint8_t ycoord, std::string str, uint8_t r, uint8_t g, uint8_t b) {
+void writeStrScaled(int8_t *buf, int32_t xcoord, int32_t ycoord, std::string str, uint8_t r, uint8_t g, uint8_t b, bool twoX) {
     uint16_t val;
     for (uint8_t l = 0; l < str.length(); l++) {
         if (str[l] == ' ') { // there's no space so skip it
@@ -146,8 +145,17 @@ void writeStr(int8_t *buf, uint8_t xcoord, uint8_t ycoord, std::string str, uint
             if ((val >> i) & 1) { // bit is set, so draw pixel
                 uint8_t x = i % 3;
                 uint8_t y = (i - x) / 3;
-                setPixelRGB(buf, xcoord + l*4 + x, ycoord + y, r, g, b);
+                if (twoX == false) {
+                    setPixelRGB(buf, xcoord + l*4 + x, ycoord + y, r, g, b);
+                }
+                else {
+                    setPixelRGBtwoX(buf, xcoord + (l*4 + x)*2, ycoord + y*2, r, g, b);
+                }
             }
         }
     }
+}
+
+void writeStr(int8_t *buf, int32_t xcoord, int32_t ycoord, std::string str, uint8_t r, uint8_t g, uint8_t b) {
+    writeStrScaled(buf, xcoord, ycoord, str, r, g, b, false);
 }

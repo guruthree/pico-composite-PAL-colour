@@ -115,6 +115,30 @@ inline void setPixelRGB(int8_t *buf, int32_t xcoord, int32_t ycoord, uint8_t r, 
     setPixelYUV(buf, xcoord, ycoord, y, u, v);
 }
 
+// set a block of 4 pixels at once, useful for drawing bigger things
+inline void setPixelYUVtwoX(int8_t *buf, int32_t xcoord, int32_t ycoord, int8_t y, int8_t u, int8_t v) {
+    if (xcoord >= XRESOLUTION-1 || ycoord >= YRESOLUTION-1 || xcoord < 0 || ycoord < 0) {
+        // clipping
+        return;
+    }
+
+    setPixelYUV(buf, xcoord,   ycoord,   y, u, v);
+    setPixelYUV(buf, xcoord+1, ycoord,   y, u, v);
+    setPixelYUV(buf, xcoord,   ycoord+1, y, u, v);
+    setPixelYUV(buf, xcoord+1, ycoord+1, y, u, v);
+
+}
+inline void setPixelRGBtwoX(int8_t *buf, int32_t xcoord, int32_t ycoord, uint8_t r, uint8_t g, uint8_t b) {
+    if (xcoord >= XRESOLUTION-1 || ycoord >= YRESOLUTION-1 || xcoord < 0 || ycoord < 0) {
+        // clipping
+        return;
+    }
+    int32_t y = 0, u = 0, v = 0;
+    rgb2yuv(r, g, b, y, u, v);
+
+    setPixelYUVtwoX(buf, xcoord, ycoord, y, u, v);
+}
+
 
 // the line of colour data being displayed
 // put it in its own SRAM bank for most reliable fast RAM access
@@ -499,4 +523,3 @@ class ColourPal {
 
 
 }; // end class
-

@@ -247,28 +247,14 @@ class Flames {
                     }
 
                     // simple nearest neighbour interpolation?
-                    setPixelYUV(tbuf, xat, yat, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat, yat-1, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat, yat-2, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-
-                    setPixelYUV(tbuf, xat+1, yat, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat+1, yat-1, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat+1, yat-2, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat+1, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUVtwoX(tbuf, xat, yat-1, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUVtwoX(tbuf, xat, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
 
 #if HORIZONTAL_DOUBLING == 2
                     xat += 2;
 #else
-                    setPixelYUV(tbuf, xat+2, yat, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat+2, yat-1, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat+2, yat-2, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat+2, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-
-                    setPixelYUV(tbuf, xat+3, yat, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat+3, yat-1, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat+3, yat-2, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
-                    setPixelYUV(tbuf, xat+3, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUVtwoX(tbuf, xat+2, yat-1, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
+                    setPixelYUVtwoX(tbuf, xat+2, yat-3, colourmap[val][0], colourmap[val][1], colourmap[val][2]);
 
                     xat += 4;
 #endif
