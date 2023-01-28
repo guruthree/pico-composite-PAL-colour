@@ -71,9 +71,9 @@
 #define DAC_FREQ float(CLOCK_SPEED / CLOCK_DIV) // this should be
 
 //#define VREG_VSEL VREG_VOLTAGE_1_15
-//#define VREG_VSEL VREG_VOLTAGE_1_20
+#define VREG_VSEL VREG_VOLTAGE_1_20
 //#define VREG_VSEL VREG_VOLTAGE_1_25
-#define VREG_VSEL VREG_VOLTAGE_1_30
+//#define VREG_VSEL VREG_VOLTAGE_1_30
 
 // fast copies of uint8_t arrays, array length needs to be multiple of 4
 int dma_chan32;
