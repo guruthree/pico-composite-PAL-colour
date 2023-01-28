@@ -136,7 +136,7 @@ uint16_t font[32*3-2] = {
 // 101
 // 101
 
-void writeStrScaled(int8_t *buf, int32_t xcoord, int32_t ycoord, std::string str, uint8_t r, uint8_t g, uint8_t b, bool twoX) {
+void writeStr(int8_t *buf, int32_t xcoord, int32_t ycoord, std::string str, uint8_t r, uint8_t g, uint8_t b, bool twoX = false) {
     uint16_t val;
     for (uint8_t l = 0; l < str.length(); l++) {
         if (str[l] == ' ') { // there's no space so skip it
@@ -156,8 +156,4 @@ void writeStrScaled(int8_t *buf, int32_t xcoord, int32_t ycoord, std::string str
             }
         }
     }
-}
-
-void writeStr(int8_t *buf, int32_t xcoord, int32_t ycoord, std::string str, uint8_t r, uint8_t g, uint8_t b) {
-    writeStrScaled(buf, xcoord, ycoord, str, r, g, b, false);
 }
