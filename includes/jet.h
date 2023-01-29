@@ -10,7 +10,7 @@ fprintf('{%d, %d, %d},\n', c')
 
 */
 
-uint8_t __not_in_flash("jet") jet[64][3] = {
+uint8_t __in_flash("jet") jet[64][3] = {
     {0, 0, 65},
     {0, 0, 73},
     {0, 0, 81},

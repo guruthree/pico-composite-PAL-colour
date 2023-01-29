@@ -28,7 +28,7 @@
 
 // right most bit is the top left corner of the character
 
-uint16_t font[32*3-2] = {
+uint16_t __in_flash("font") font[32*3-2] = {
     0b0010000010010010, // ! (ASCII: 33)
     0b0000000000101101, // "
     0b0101111101111101, // #
