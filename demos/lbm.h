@@ -33,12 +33,9 @@ class LBM {
 
     public:
 
-#if HORIZONTAL_DOUBLING == 2
-        static const uint8_t NX = 52;
-#else
-        static const uint8_t NX = 46;
-#endif
-        static const uint8_t NY = 32;
+        static const uint8_t NX = 44;
+        static const uint8_t NY = 24;
+        static const uint8_t CYL_DEFY = (NY-2)/2-1;
         float maxVal;
         uint8_t BOUND[NX][NY];
 
@@ -47,7 +44,7 @@ class LBM {
 
         // omega any higher and it dies?
         // 34x34, 1.85, 100
-        static constexpr float OMEGA = 1.82f, DENSITY = 0.6f, TARGET_USUM = 150.0f;
+        static constexpr float OMEGA = 1.82f, DENSITY = 0.6f, TARGET_USUM = 155.0f;
 
         static constexpr float W1 = 1.0f / 9.0f;
         static constexpr float W2 = 1.0f / 36.0f;
@@ -135,7 +132,7 @@ class LBM {
         }
 
         // place a cylinder in the flow
-        void cylinder(uint8_t yoffset = 15, uint8_t xoffset = 8) {
+        void cylinder(uint8_t yoffset = CYL_DEFY, uint8_t xoffset = 8) {
             for (jj = yoffset; jj < yoffset+4; jj++) {
                 BOUND[xoffset+1][jj] = 1;
                 BOUND[xoffset+2][jj] = 1;
@@ -154,11 +151,11 @@ class LBM {
         void randomness () {
         	if ((float)rand()/(float)(RAND_MAX) > 0.995f) {
         		//printf("swapping boundary\n");
-        		if (BOUND[11][15] == 1) {
-        			BOUND[11][15] = 0;
+        		if (BOUND[11][CYL_DEFY] == 1) {
+        			BOUND[11][CYL_DEFY] = 0;
         		}
         		else {
-        			BOUND[11][15] = 1;
+        			BOUND[11][CYL_DEFY] = 1;
         		}
         		numBound = doBound();
         	}
@@ -346,7 +343,8 @@ class LBM {
 
 void drawlbm(LBM &lbm, int8_t *tbuf) {
 
-    uint16_t xat = 0, yat = 0, speed;
+    uint16_t xat, speed;
+    uint16_t yat = YRESOLUTION/2 - ((lbm.NY-2)/2)*4 + 5; // manually offset :(
     for (uint8_t y = 2; y < lbm.NY-2; y++) { // don't draw boundaries
         xat = XRESOLUTION/2 - (lbm.NX/2)*4/HORIZONTAL_DOUBLING-1;
         for (uint8_t x = 0; x < lbm.NX; x++) {
