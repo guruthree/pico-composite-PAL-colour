@@ -172,8 +172,6 @@ int main() {
     }
 
     fire.init();
-    Flames::COLOUR_SCHEME firecmap = Flames::RED;
-    fire.setColormap(firecmap);
 
     cliffs.init();
 
@@ -292,16 +290,12 @@ int main() {
             memset(tbuf, 0, BUF_SIZE);
 
             fire.step();
-#if HORIZONTAL_DOUBLING == 1
-            // CPU load is very high without doubling, a little pause here reduces flicker
-            sleep_us(8000);
-#endif
             fire.draw(tbuf);
-            if (firecmap == Flames::RED)
+            if (fire.getColormap() == Flames::RED)
                 writeStr(tbuf, 7, 1, "Red Flames", 100, 0, 0);
-            else if (firecmap == Flames::PURPLE)
+            else if (fire.getColormap() == Flames::PURPLE)
                 writeStr(tbuf, 7, 1, "Purple Flames", 100, 0, 100);
-            else if (firecmap == Flames::BLUE)
+            else if (fire.getColormap() == Flames::BLUE)
                 writeStr(tbuf, 7, 1, "Blue Flames", 0, 0, 100);
         }
         else if (at == 7) {
@@ -337,13 +331,12 @@ int main() {
             at++;
             demo_start_time = time();
             if (at == 7) {
-                if (firecmap == Flames::RED)
-                    firecmap = Flames::PURPLE;
-                else if (firecmap == Flames::PURPLE)
-                    firecmap = Flames::BLUE;
-                else if (firecmap == Flames::BLUE)
-                    firecmap = Flames::RED;
-                fire.setColormap(firecmap);
+                if (fire.getColormap() == Flames::RED)
+                    fire.setColormap(Flames::PURPLE);
+                else if (fire.getColormap() == Flames::PURPLE)
+                    fire.setColormap(Flames::BLUE);
+                else if (fire.getColormap() == Flames::BLUE)
+                    fire.setColormap(Flames::RED);
             }
             if (at == NUM_DEMOS) {
                 at = 1;

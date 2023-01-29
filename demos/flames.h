@@ -44,6 +44,7 @@ class Flames {
         static const uint8_t NUM_COLOURS = HISTORY*3+1;
         // yuv colour
         int8_t colourmap[NUM_COLOURS][3];
+        COLOUR_SCHEME firecmap;
 
         // set the points in a row to val between x1 and x2 inclusive
         void fillim(uint8_t (&im)[ACROSS], uint8_t x1, uint8_t x2, uint8_t val) {
@@ -225,6 +226,8 @@ class Flames {
             for (uint8_t i = 0; i < HISTORY; i++) {
                 generateFlames(allim[i]);
             }
+
+            setColormap();
         }
 
         void step() {
@@ -263,9 +266,11 @@ class Flames {
             }
         }
 
-        void setColormap(COLOUR_SCHEME scheme) {
+        void setColormap(COLOUR_SCHEME scheme = RED) {
+            firecmap = scheme;
+
+            // calculate the colourmap first in RGB, then convert to YUV for storage and use
             memset(colourmap, 0, sizeof(colourmap));
-            // calculate in RGB, then convert to YUV
 
             switch (scheme) {
                 case BLUE:
@@ -321,6 +326,10 @@ class Flames {
                 colourmap[i][1] = u;
                 colourmap[i][2] = v;
             }
+        }
+
+        COLOUR_SCHEME getColormap() {
+            return firecmap;
         }
 
 };
