@@ -43,7 +43,7 @@ class Cliffs {
         float dzstep = 1.2f; // rate at which it approaches the screen
         uint32_t sat = 0; // where we are in the undulating landscape
 
-        float basecliff[ACROSS] = {80, 80, 80, 5, 1, 0, 1, -2, 1, 0, 1, 5, 80, 80, 80};
+        float basecliff[ACROSS] = {80, 79, 80, 5, 1, 0, 1, -2, 1, 0, 1, 5, 80, 79, 80};
 
         // generate an interesting across
         void generateAcross(uint8_t y) {
@@ -105,10 +105,11 @@ class Cliffs {
             // refresh verticies coordinates array to be transformed again
             for (uint8_t x = 0; x < ACROSS; x++) {
                 for (uint8_t y = 0; y < DOWN; y++) {
-                    vt[y][x] = {(float(x)-ACROSS/2)*20, -(thecliff[y][x]/2 - 40), -(float(y)-3)*20 + zoffset};
+                    vt[y][x] = {(float(x)-ACROSS/2)*60/HORIZONTAL_DOUBLING, -(thecliff[y][x]/2 - 40), -(float(y)-3)*20 + zoffset};
                 }
             }
 
+            // the angle looking down into the valley
             Matrix3 rot = Matrix3::getRotationMatrix(-10.0f/180.0f*M_PI, 0, 0);
 
             for (uint8_t x = 0; x < ACROSS; x++) {
@@ -133,8 +134,14 @@ class Cliffs {
 
 
             // loop through x and y and draw the lines
-            for (uint8_t x = 0; x < ACROSS; x++) {
-                for (uint8_t y = 0; y < DOWN-1; y++) {
+            for (uint8_t y = 0; y < DOWN-1; y++) {
+
+                // color ranges from purple 120, 20, 100 to green 50, 100, 100
+                float distanceaway = ((float(y)-3)*20 + zoffset) / ((DOWN + 2)*20);
+                uint8_t r = 50 + distanceaway*70;
+                uint8_t g = 100 - distanceaway*80;
+
+                for (uint8_t x = 0; x < ACROSS; x++) {
 
                     // don't show any lines that are entirely outside of screen space or start and end outside of screen space
                     if ((vt[y][x].x < 0 && vt[y][x+1].x < 0) || (vt[y][x].x > XRESOLUTION && vt[y][x+1].x > XRESOLUTION) || 
@@ -142,7 +149,7 @@ class Cliffs {
                         (vt[y][x].x < 0 && vt[y][x+1].x > YRESOLUTION) || (vt[y][x].y < 0 && vt[y][x+1].y > YRESOLUTION)) {
                     }
                     else if (x < ACROSS-1) {
-                        drawLineRGB(tbuf, vt[y][x].x, vt[y][x].y, vt[y][x+1].x, vt[y][x+1].y, 120, 20, 100);
+                        drawLineRGB(tbuf, vt[y][x].x, vt[y][x].y, vt[y][x+1].x, vt[y][x+1].y, r, g, 100);
                     }
 
                     if ((vt[y][x].x < 0 && vt[y+1][x].x < 0) || (vt[y][x].x > XRESOLUTION && vt[y+1][x].x > XRESOLUTION) || 
@@ -150,7 +157,7 @@ class Cliffs {
                         (vt[y][x].x < 0 && vt[y+1][x].x > YRESOLUTION) || (vt[y][x].y < 0 && vt[y+1][x].y > YRESOLUTION)) {
                     }
                     else {
-                        drawLineRGB(tbuf, vt[y][x].x, vt[y][x].y, vt[y+1][x].x, vt[y+1][x].y, 120, 20, 100);
+                        drawLineRGB(tbuf, vt[y][x].x, vt[y][x].y, vt[y+1][x].x, vt[y+1][x].y, r, g, 100);
                     }
 
                 }
