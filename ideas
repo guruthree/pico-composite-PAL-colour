@@ -1,14 +1,8 @@
-button press to change demo
-random demo order?
+sun in cliffs
 
-static snow
-
-need cliff geometry to change
-
-after first run through change demo at random
-    and no longer display description
-    and skip bbc testcard
-
+plasma demo
+static snow demo
+picture roll
 
 ===
 
@@ -19,8 +13,7 @@ bbc testcard rolls up and down, stabilising
 
 ===
 
-demos routine:
-    timed or changing when boot button is pressed
+possible demos routines?
 
 some sort of game?
     break out
@@ -28,11 +21,32 @@ some sort of game?
 warp/starfield?
 video?
     bad apple?
+        on top of plasma effect
     something anime/cell-shaded?
-        nico nico nee/dancing girls thing?
-    stargate render?
+        nico nico nee?/dancing girls thing?
+        me me me?
     badger badger
+
+
+gameboy emulator?
+    https://github.com/deltabeard/Peanut-GB
+
+add a button to change demo?
+
+youtube video recording
 
 ===
 
+do proper PAL 50i rather than 25p?
+    what keeps some digital adapters from working?
+
+code clean up
+    buffer class
+    options for x,y of demos on screen & their sizes
+
+double the y-resolution by using 4 bits then 4 bits?
+double x by changing the # of samples per pixel, and then switching to 2 bits per y/u/v?
+    or by setting up the buffer class with individual arrays for y, u, and v?
+
 some sort of auto figuring out the correct DAC frequency?
+    (fine tuning buttons?)

@@ -40,33 +40,15 @@
 #include "hardware/vreg.h"
 #include "dac.pio.h"
 
-// pico-sdk/src/rp2_common/hardware_clocks/scripts/vcocalc.py
-// fprintf('./vcocalc.py %0.4f >> ~/Desktop/possible_clocks\n', PAL*(1:120)')
-// replace with const?
-// 368? 399? 501?
-//#define CLOCK_SPEED 133e6
-//#define CLOCK_DIV 1.99987158719282231978 // registers as secam?
+// find a CLOCKS_SPEED close to a multiple of the PAL carrier frequency
+// using pico-sdk/src/rp2_common/hardware_clocks/scripts/vcocalc.py
+// then tweak it and CLOCK_DIV until a colour picture comes through
 
-//#define CLOCK_SPEED 266e6
-//#define CLOCK_DIV 3.99974249778092305618 // 15 samples, clock divided by carrier divided by 15
-//#define CLOCK_DIV 2.99980738078923359069*0.9969 // 20 samples, *0.996, 0.9963 to 0.9966, 0.9967 to 0.9968 colours definetely odd (colour burst too red?)
-//#define CLOCK_DIV 4.99967896798205568842*0.995 // 12 samples, *0.995
-//#define CLOCK_DIV 11.99922952315693436276*0.9922 // 5 samples, *0.992, 0.9918-0.9919, 0.9922
-
-//#define CLOCK_SPEED float(319200000)
-//#define CLOCK_DIV (5.99961476157846629320/0.991) // 12 samples 991
-//#define CLOCK_DIV 8.99942214236770077207*0.9912 // 8 samples 991, 986, 9861, 9879, 9878, 9859, 9911, 9912, 9913
-//#define CLOCK_DIV 9.07932015977370987514 // (8.99942214236770077207/0.9912) looks really solid!
-
-// based on 9912
 #define CLOCK_SPEED 321e6
-#define CLOCK_DIV (9*1.004) // works with samples per pixel 8.0125
+// the divider adjusted by 1.0040, 41, 42, and 43 all works
+//#define CLOCK_DIV (9*1.0041)
+#define CLOCK_DIV (12*1.004)
 
-//#define CLOCK_DIV float(6)
-//#define CLOCK_DIV 2.99980738078923314660 // 24 samples
-
-//#define CLOCK_SPEED 159.6e6
-//#define CLOCK_DIV 3.99974317438564463956
 
 #define DAC_FREQ float(CLOCK_SPEED / CLOCK_DIV) // this should be
 
@@ -105,19 +87,22 @@ int8_t buf1[BUF_SIZE];
 
 ColourPal cp;
 #define NUM_DEMOS 8
-LBM lbm; // high memory requirements (big arrays), so global
+
+// largeish memory requirements (big arrays), so global
+LBM lbm;
 Flames fire;
 Cliffs cliffs;
+#define NUM_CUBES 8
+Cube* cubes[NUM_CUBES] = {new Cube(20), new Cube(20), new Cube(20), new Cube(20),
+                    new Cube(20), new Cube(20), new Cube(20), new Cube(20)};
+TriangleRenderer tr;
+
 
 void core1_entry();
 
 int main() {
 	vreg_set_voltage(VREG_VSEL);
-//    stdio_init_all();
     set_sys_clock_khz(CLOCK_SPEED/1000.0f, true);
-
-//    sleep_ms(1500);
-//    printf("hello world\n");
 
     gpio_init(18);
     gpio_init(19);
@@ -160,14 +145,9 @@ int main() {
 //    return 0;
 
     lbm.init();
-    lbm.cylinder(14);
+    lbm.cylinder();
 
-    TriangleRenderer tr;
-
-    #define NUM_CUBES 8
-    Cube* cubes[NUM_CUBES];
     for (uint8_t i = 0; i < NUM_CUBES; i++) {
-        cubes[i] = new Cube(20);
         cubes[i]->randomise();
     }
 
@@ -220,24 +200,38 @@ int main() {
             drawLineRGB(tbuf, 0, 60, XRESOLUTION-1, 60, 0, 0, 127);
             drawLineRGB(tbuf, 0, 61, XRESOLUTION-1, 61, 0, 0, 127);
             drawLineRGB(tbuf, 0, 62, XRESOLUTION-1, 62, 0, 0, 127);
+
+            writeStr(tbuf, 2, 20, "the quick brown fox jumps over the lazy dog 1234567890", 120, 120, 120);
+            writeStr(tbuf, 2, 30, "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG 1234567890", 120, 120, 120);
+            writeStr(tbuf, 2, 40, "the quick brown fox jumps over the lazy dog 1234567890", 120, 0, 0);
+            writeStr(tbuf, 2, 50, "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG 1234567890", 120, 0, 0);
+            writeStr(tbuf, 2, 60, "the quick brown fox jumps over the lazy dog 1234567890", 0, 120, 0);
+            writeStr(tbuf, 2, 70, "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG 1234567890", 0, 120, 0);
+            writeStr(tbuf, 2, 80, "the quick brown fox jumps over the lazy dog 1234567890", 0, 0, 120);
+            writeStr(tbuf, 2, 90, "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG 1234567890", 0, 0, 120);
         }
         else if (at == 1) {
-            memcpy(tbuf, testcardfpng, BUF_SIZE);
+            memcpy(tbuf, raspberrypipng, BUF_SIZE);
         }
         else if (at == 2) {
-            memcpy(tbuf, raspberrypipng, BUF_SIZE);
+            memcpy(tbuf, testcardfpng, BUF_SIZE);
         }
         else if (at == 3) {
             // show the LBM simulation
             memset(tbuf, 0, BUF_SIZE);
 
             // if floating point was faster, we'd calculate multiple frames between renders
+//            lbm.timestep();
             lbm.timestep(true);
-
             drawlbm(lbm, tbuf);
-            writeStr(tbuf, 7, 1, "Lattice", 0, 0, 0);
-            writeStr(tbuf, 7, 7, "Boltzmann", 0, 0, 0);
-            writeStr(tbuf, 7, 13, "CFD Simulation", 0, 0, 0);
+            writeStr(tbuf, 12, 1, "Lattice Boltzmann", 100, 100, 100);
+            writeStr(tbuf, 12, 7, "CFD Simulation", 100, 100, 100);
+            writeStr(tbuf, 12, YRESOLUTION-10, "Eddy Shedding", 100, 100, 100);
+
+            char txtbuf[20];
+            memset(txtbuf, 0, sizeof(buf));
+            sprintf(txtbuf, "t = %d", lbm.getNumberOfTimeSteps());
+            writeStr(tbuf, 12, YRESOLUTION-5, txtbuf, 100, 100, 100);
         }
         else if (at == 4) {
             // show a bouncing cube
@@ -253,7 +247,7 @@ int main() {
             tr.reset();
             tr.addObject(*cubes[0]);
             tr.render(tbuf);
-            writeStr(tbuf, 7, 1, " One Cube", 100, 100, 100);
+            writeStr(tbuf, 7, 3, " One Cube", 100, 100, 100);
         }
         else if (at == 5) {
             // show many bouncing cube
@@ -266,10 +260,6 @@ int main() {
 
             for (uint8_t i = 0; i < NUM_CUBES; i++) {
                 cubes[i]->step();
-#if HORIZONTAL_DOUBLING == 1
-            // CPU load is very high without doubling, a little pause here reduces flicker
-            sleep_us(1000);
-#endif
             }
 
             for (uint8_t i = 0; i < NUM_CUBES; i++) {
@@ -283,7 +273,7 @@ int main() {
                 tr.addObject(*cubes[i]);
             }
             tr.render(tbuf);
-            writeStr(tbuf, 7, 1, "Many Cubes", 100, 100, 100);
+            writeStr(tbuf, 7, 3, "Many Cubes", 100, 100, 100);
         }
         else if (at == 6) {
             // animated fire
@@ -292,37 +282,33 @@ int main() {
             fire.step();
             fire.draw(tbuf);
             if (fire.getColormap() == Flames::RED)
-                writeStr(tbuf, 7, 1, "Red Flames", 100, 0, 0);
+                writeStr(tbuf, 7, 3, "Red Flames", 100, 0, 0);
             else if (fire.getColormap() == Flames::PURPLE)
-                writeStr(tbuf, 7, 1, "Purple Flames", 100, 0, 100);
+                writeStr(tbuf, 7, 3, "Purple Flames", 100, 0, 100);
             else if (fire.getColormap() == Flames::BLUE)
-                writeStr(tbuf, 7, 1, "Blue Flames", 0, 0, 100);
+                writeStr(tbuf, 7, 3, "Blue Flames", 0, 0, 100);
         }
         else if (at == 7) {
             // flying through the cliffs
             memset(tbuf, 0, BUF_SIZE);
 
             cliffs.step();
-#if HORIZONTAL_DOUBLING == 1
-            // CPU load is very high without doubling, a little pause here reduces flicker
-            sleep_us(5000);
-#endif
             cliffs.render(tbuf);
-            writeStr(tbuf, 7, 1, "Synth Cliffs", 0, 0, 0);
+            writeStr(tbuf, 7, 3, "Synth Cliffs", 0, 0, 0);
         }
 
         if (at > 2) {
             char txtbuf[20];
             memset(txtbuf, 0, sizeof(buf));
             sprintf(txtbuf, "%4.1f ms", ((time() - frame_start_time)/1e3));
-            writeStr(tbuf, XRESOLUTION-35, 119, txtbuf, 20, 20, 120);
+            writeStr(tbuf, XRESOLUTION-35, YRESOLUTION-5, txtbuf, 100, 100, 100);
         }
 
         // show the current "channel" (demo) number for a little bit after changing
         if (time() - demo_start_time < 2*1e6) {
             char txtbuf[20];
             sprintf(txtbuf, "%d", at);
-            writeStrScaled(tbuf, XRESOLUTION-21, 9, txtbuf, 0, 100, 0, true);
+            writeStr(tbuf, XRESOLUTION-21, 9, txtbuf, 0, 100, 0, true);
         }
 
         cp.setBuf(tbuf);
@@ -342,10 +328,10 @@ int main() {
                 at = 1;
             }
         }
-        // 50 Hz?
+        // 50 Hz? sleep up to 20 ms to do the next frame
         to_sleep = 20e3 - (time() - frame_start_time);
         if (to_sleep > 0) {
-            sleep_ms(to_sleep/1000); 
+            sleep_us(to_sleep); 
         }
 
     }

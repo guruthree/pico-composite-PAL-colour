@@ -71,7 +71,7 @@ pkg load image % for octave
 
     file = strrep(file, '.', '');
 
-    fprintf('int8_t __not_in_flash("%s") %s[] = {\n%s};\n\n', file, file, out);
+    fprintf('int8_t __in_flash("%s") %s[] = {\n%s};\n\n', file, file, out);
     
     function [y, u, v] = rgb2yuv(r, g, b)
         y = 5 * r / 16 + 9 * g / 16 + b / 8;
