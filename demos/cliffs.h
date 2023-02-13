@@ -126,9 +126,24 @@ class Cliffs {
             // fill background with colour
             int32_t y = 0, u = 0, v = 0;
             rgb2yuv(50, 5, 40, y, u, v);
-            for (uint8_t xcoord = 0; xcoord < XRESOLUTION; xcoord++) {
-                for (uint8_t ycoord = 0; ycoord < YRESOLUTION; ycoord++) {
+            for (int32_t xcoord = 0; xcoord < XRESOLUTION; xcoord++) {
+                for (int32_t ycoord = 0; ycoord < YRESOLUTION; ycoord++) {
                     setPixelYUV(tbuf, xcoord, ycoord, y, u, v);
+                }
+            }
+
+            // draw a sun
+            uint8_t radius = 30;
+            int32_t sunxoffset = XRESOLUTION/2;
+            int32_t sunyoffset = YRESOLUTION/2 - 5;
+            for (int32_t xcoord = -radius; xcoord <= radius; xcoord++) {
+                for (int32_t ycoord = -radius; ycoord <= 0; ycoord++) {
+                    if (sqrt(pow(xcoord*HORIZONTAL_DOUBLING, 2) + pow(ycoord/0.8, 2)) <= radius) { 
+                        // y is divided by 0.8 for aspect ratio correction to make the sun look circular
+                        uint16_t g = -ycoord*10;
+                        if (g > 127) g = 127;
+                        setPixelRGB(tbuf, xcoord + sunxoffset, ycoord + sunyoffset, 127, g, 0);
+                    }
                 }
             }
 
