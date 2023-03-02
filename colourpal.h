@@ -110,6 +110,19 @@ inline void setPixelYUV(int8_t *buf, int32_t xcoord, int32_t ycoord, int8_t y, i
     *(idx+2) = v;
 }
 
+inline void getPixelYUV(int8_t *buf, int32_t xcoord, int32_t ycoord, int8_t &y, int8_t &u, int8_t &v) {
+    if (xcoord >= XRESOLUTION || ycoord >= YRESOLUTION || xcoord < 0 || ycoord < 0) {
+        // clipping
+        return;
+    }
+
+    int8_t *idx = buf + (ycoord * XRESOLUTION + xcoord) * 3;
+    y = *idx;
+    u = *(idx+1) = u;
+    v = *(idx+2) = v;
+}
+
+
 inline void setPixelRGB(int8_t *buf, int32_t xcoord, int32_t ycoord, uint8_t r, uint8_t g, uint8_t b) {
     if (xcoord >= XRESOLUTION || ycoord >= YRESOLUTION || xcoord < 0 || ycoord < 0) {
         // clipping
