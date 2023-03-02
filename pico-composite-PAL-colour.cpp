@@ -85,8 +85,14 @@ int8_t buf1[BUF_SIZE];
 #include "flames.h"
 #include "cliffs.h"
 
+#if HORIZONTAL_DOUBLING == 1
+    #include "badger.h"
+    #include "mushroom1.h"
+    #include "mushroom2.h"
+#endif
+
 ColourPal cp;
-#define NUM_DEMOS 8
+#define NUM_DEMOS 9
 
 // largeish memory requirements (big arrays), so global
 LBM lbm;
@@ -154,6 +160,12 @@ int main() {
     fire.init();
 
     cliffs.init();
+
+    #if HORIZONTAL_DOUBLING == 1
+        uint8_t currentbadgerframe = 0;
+        uint8_t mushroomat = 0;
+        uint64_t mushroomtime;
+    #endif
 
     memset(buf0, 0, BUF_SIZE);
     memset(buf1, 0, BUF_SIZE);
@@ -359,7 +371,13 @@ int main() {
             cliffs.render(tbuf);
             writeStr(tbuf, 7, 3, "Synth Cliffs", 0, 0, 0);
         }
-        else if (at == 8) {
+        #if HORIZONTAL_DOUBLING == 1
+            else if (at == 8) {
+        #else
+            // the video won't currently work at low res (need to convert images)
+            // so instead just show static
+            else if (at == 8 || at == 9) {
+        #endif
             // static
             memset(tbuf, 0, BUF_SIZE);
 
@@ -370,6 +388,52 @@ int main() {
             }
 
         }
+        #if HORIZONTAL_DOUBLING == 1
+            else if (at == 9) {
+                // run length encoding video
+                // badgers & mushrooms
+                memset(tbuf, 0, BUF_SIZE);
+
+                if (mushroomat == 0) {
+                    int8_t* currentframe = badgerframes[currentbadgerframe];
+                    int8_t *idx = tbuf;
+
+                    for (uint32_t j = 0; j < badgerframelengths[currentbadgerframe]; j++) {
+                        for (uint8_t i = 0; i < currentframe[j*4 + 3]; i++) {
+                            // replicate the specified pixel that number of times
+                            *(idx++) = currentframe[j*4 + 0];
+                            *(idx++) = currentframe[j*4 + 1];
+                            *(idx++) = currentframe[j*4 + 2];
+                        }
+                    }
+
+                    if (currentbadgerframe < NUM_BADGERFRAMES-1) { // minus one so it's for the next iteration around
+                        if (buf) { // the video is 25 fps, but display is 50, so only update every other frame
+                            currentbadgerframe++;
+                        }
+                    }
+                    else {
+                        currentbadgerframe = 0;
+                        mushroomat = 1;
+                        mushroomtime = time();
+                    }
+                }
+                else {
+                    if (mushroomat == 1) {
+                        memcpy(tbuf, mushroom1png, BUF_SIZE);
+                    }
+                    else {
+                        memcpy(tbuf, mushroom2png, BUF_SIZE);
+                    }
+                    if (time() - mushroomtime > 1.65*1e6) {
+                        mushroomat = 0;
+                    }
+                    else if (time() - mushroomtime > 0.65*1e6) {
+                        mushroomat = 2;
+                    }
+                }
+    #endif
+        } // end of demo selection
 
         if (at > 2) {
             char txtbuf[20];
