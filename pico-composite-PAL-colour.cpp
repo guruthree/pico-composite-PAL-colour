@@ -214,7 +214,70 @@ int main() {
             memcpy(tbuf, raspberrypipng, BUF_SIZE);
         }
         else if (at == 2) {
-            memcpy(tbuf, testcardfpng, BUF_SIZE);
+            // show BBC2 Test Card F with a tuning in animation
+            // current time in seconds
+            float now = (time() - demo_start_time) / 1e6;
+
+            // scroll up, start by showing the bottom at the top first, then the roll up
+            if (now < 0.3) { // 0.5
+                memset(tbuf, 0, BUF_SIZE);
+                int8_t yoff = 30 - 25*(cosf(now*M_PI*10/3+M_PI)+1);
+                int8_t gap = 20;
+                if (yoff > 0) {
+                    memcpy(tbuf, testcardfpng+BUF_SIZE-XRESOLUTION*yoff*3, XRESOLUTION*yoff*3);
+                }
+                memcpy(tbuf+XRESOLUTION*(yoff+gap)*3, testcardfpng, BUF_SIZE-XRESOLUTION*(yoff+gap)*3);
+            }
+            else if (now < 0.35) { // after the big roll, a little bump
+                memset(tbuf, 0, BUF_SIZE);
+                int8_t yoff = 3*fabs(sinf((now-0.3)*M_PI*20)); // t - 0.2
+                memcpy(tbuf, testcardfpng+XRESOLUTION*yoff*3, BUF_SIZE-XRESOLUTION*yoff*3);
+            }
+            else {
+                // after sync, the image is perfect
+                memcpy(tbuf, testcardfpng, BUF_SIZE);
+            }
+
+            // flash static for a little bit, in a pulsing pattern
+            // also fade the colours in
+            if (now < 3) {
+                float intensity; // intensity of the static
+                if (now < 0.5) {
+                    intensity = cosf(2*now*M_PI)*0.4+0.6;
+                }
+                else if (now < 1.5) {
+                    intensity = 0.125*(cosf(2*now*M_PI)+1.125);
+                    intensity *= (1.5-now)*0.2;
+                }
+                else { // after 1.5 seconds, a clear picture
+                    intensity = 0;
+                }
+                int32_t intensityint = intensity * 256; // perform intensity adjustments as integer math
+                int32_t t;
+                int32_t tint = (now*2.5+0.5)*256; // the colour fades in
+                for (int32_t ycoord = 0; ycoord < YRESOLUTION; ycoord++) {
+                    for (int32_t xcoord = 12; xcoord < XRESOLUTION-12; xcoord++) {
+                        int8_t *idx = tbuf + (ycoord * XRESOLUTION + xcoord) * 3;
+                        // the static
+                        if (now < 0.5) {
+                            t = (*idx - *idx * intensityint / 512) + (randi(-127, 127) * intensityint) / 256;
+                        }
+                        else if (now < 1.5) {
+                            t = *idx + (randi(-127, 127) * intensityint) / 256;
+                        }
+                        else {
+                            t = *idx;
+                        }
+                        if (t > 127) t = 127;
+                        if (t < 0) t = 0;
+                        *idx = t;
+                        // the colour fade
+                        *(idx+1) = (*(idx+1) * tint) / 2048; // divide by 256 * 8
+                        *(idx+2) = (*(idx+2) * tint) / 2048;
+                    }
+                }
+            } // now
+
         }
         else if (at == 3) {
             // show the LBM simulation
