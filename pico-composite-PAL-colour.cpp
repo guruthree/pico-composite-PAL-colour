@@ -86,7 +86,7 @@ int8_t buf1[BUF_SIZE];
 #include "cliffs.h"
 
 ColourPal cp;
-#define NUM_DEMOS 7
+#define NUM_DEMOS 8
 
 // largeish memory requirements (big arrays), so global
 LBM lbm;
@@ -295,6 +295,17 @@ int main() {
             cliffs.step();
             cliffs.render(tbuf);
             writeStr(tbuf, 7, 3, "Synth Cliffs", 0, 0, 0);
+        }
+        else if (at == 8) {
+            // static
+            memset(tbuf, 0, BUF_SIZE);
+
+            for (int32_t ycoord = 0; ycoord < YRESOLUTION; ycoord++) {
+                for (int32_t xcoord = 0; xcoord < XRESOLUTION; xcoord++) {
+                    setPixelYUV(tbuf, xcoord, ycoord, rand() & 127, 0, 0);
+                }
+            }
+
         }
 
         if (at > 2) {
