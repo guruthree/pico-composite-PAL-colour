@@ -308,6 +308,7 @@ int main() {
         if (time() - demo_start_time < 2*1e6) {
             char txtbuf[20];
             sprintf(txtbuf, "%d", at);
+            writeStr(tbuf, XRESOLUTION-21+1, 9+1, txtbuf, 0, 0, 0, true);
             writeStr(tbuf, XRESOLUTION-21, 9, txtbuf, 0, 100, 0, true);
         }
 
