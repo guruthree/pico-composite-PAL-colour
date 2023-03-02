@@ -15,6 +15,20 @@ Due to the technical limitations of RAM and DAC timings, it's been an ongoing ef
 
 ![My original passive resistor DAC and Tiny2040](resources/chipanddac.jpg)
 
+## The TV Channels ##
+
+The way the code is set up, it will run through a collection of numbered demos, a la TV channels. After briefly displaying a classic test screen to verify the PIO DAC is functioning, the following demos show:
+
+1. A Pi Logo
+2. Tuning into BBC2 Test Card F
+3. A [lattice Boltzmann](https://en.wikipedia.org/wiki/Lattice_Boltzmann_methods) simulation of flow past a cylinder showing [vortex shedding](https://en.wikipedia.org/wiki/Vortex_shedding)
+4. A 3D bouncing cube, after the classic 3D Flower Box screen saver
+5. Many 3D cubes, bouncing off each other
+6. A fire animation, which cycles through different colour schemes
+7. A synthwave inspired landscape animation
+8. Classic analogue TV static
+9. A portion of Weebl's Badger Badger Badger flash animation, rendered as run length encoded video
+
 ## Resources ##
 
 A bit of research was needed to understand how composite video and colour composite video work, and how I could make it work on the Pico. I found these resources quite helpful.
