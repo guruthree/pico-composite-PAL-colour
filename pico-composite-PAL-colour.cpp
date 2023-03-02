@@ -86,7 +86,7 @@ int8_t buf1[BUF_SIZE];
 #include "cliffs.h"
 
 ColourPal cp;
-#define NUM_DEMOS 8
+#define NUM_DEMOS 7
 
 // largeish memory requirements (big arrays), so global
 LBM lbm;
@@ -325,7 +325,7 @@ int main() {
                 else if (fire.getColormap() == Flames::BLUE)
                     fire.setColormap(Flames::RED);
             }
-            if (at == NUM_DEMOS) {
+            if (at == NUM_DEMOS+1) {
                 at = 1;
             }
         }
