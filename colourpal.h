@@ -84,7 +84,7 @@ const uint32_t SAMPLES_DEAD_SPACE = SAMPLES_SYNC_PORCHES - SAMPLES_FRONT_PORCH -
     const uint8_t PIXELS_A = 64; // without doubling
 #endif
 
-const uint8_t PIXELS_B = XRESOLUTION - PIXELS_A;
+const uint32_t PIXELS_B = XRESOLUTION - PIXELS_A;
 //const uint8_t PIXELS_B = 93; // how many pixels are processed during colour
 //const uint8_t PIXELS_B = 100; // without doubling
 
