@@ -319,7 +319,7 @@ class Flames {
             colourmap[0][1] = 0;
             colourmap[0][2] = 0;
 
-            int32_t y, u, v;
+            int8_t y, u, v;
             for (uint8_t i = 0; i < NUM_COLOURS; i++) {
                 rgb2yuv(colourmap[i][0], colourmap[i][1], colourmap[i][2], y, u, v);
                 colourmap[i][0] = y;

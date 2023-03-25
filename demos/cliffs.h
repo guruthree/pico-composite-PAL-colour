@@ -124,7 +124,7 @@ class Cliffs {
 
 
             // fill background with colour
-            int32_t y = 0, u = 0, v = 0;
+            int8_t y = 0, u = 0, v = 0;
             rgb2yuv(50, 5, 40, y, u, v);
             for (int32_t xcoord = 0; xcoord < XRESOLUTION; xcoord++) {
                 for (int32_t ycoord = 0; ycoord < YRESOLUTION; ycoord++) {
