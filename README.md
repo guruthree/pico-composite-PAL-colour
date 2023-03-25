@@ -26,8 +26,9 @@ The way the code is set up, it will run through a collection of numbered demos, 
 5. Many 3D cubes, bouncing off each other
 6. A fire animation, which cycles through different colour schemes
 7. A synthwave inspired landscape animation
-8. Classic analogue TV static
+8. Classic analogue TV static (snow)
 9. A portion of Weebl's Badger Badger Badger flash animation, rendered as run length encoded video
+10. Bad Apple overlayed with the classic [plasma effect](https://en.wikipedia.org/wiki/Plasma_effect)
 
 ## Resources ##
 

@@ -89,10 +89,15 @@ int8_t buf1[BUF_SIZE];
     #include "badger.h"
     #include "mushroom1.h"
     #include "mushroom2.h"
+
+    #include "badapple.h"
+    #include "sine.h"
+    #include "hsv.h"
 #endif
 
 ColourPal cp;
-#define NUM_DEMOS 9
+#define NUM_DEMOS 10
+#define DEMO_DURATION 5 // seconds to show each demo for
 
 // largeish memory requirements (big arrays), so global
 LBM lbm;
@@ -162,9 +167,14 @@ int main() {
     cliffs.init();
 
     #if HORIZONTAL_DOUBLING == 1
-        uint8_t currentbadgerframe = 0;
+        uint32_t currentbadgerframe = 0;
         uint8_t mushroomat = 0;
         uint64_t mushroomtime;
+
+        uint32_t currentbadappleframe = 0;
+        float badapplehue = 0;
+
+        int8_t plasmavals[3*3] = {5, 2, 4, 2, 4, 8, 10, 7, 6};
     #endif
 
     memset(buf0, 0, BUF_SIZE);
@@ -371,13 +381,13 @@ int main() {
             cliffs.render(tbuf);
             writeStr(tbuf, 7, 3, "Synth Cliffs", 0, 0, 0);
         }
-        #if HORIZONTAL_DOUBLING == 1
-            else if (at == 8) {
-        #else
-            // the video won't currently work at low res (need to convert images)
-            // so instead just show static
-            else if (at == 8 || at == 9) {
-        #endif
+#if HORIZONTAL_DOUBLING == 1
+        else if (at == 8) {
+#else
+        // the video won't currently work at low res (need to convert images)
+        // so instead just show static
+        else if (at == 8 || at == 9 || at == 10) {
+#endif
             // static
             memset(tbuf, 0, BUF_SIZE);
 
@@ -386,54 +396,144 @@ int main() {
                     setPixelYUV(tbuf, xcoord, ycoord, rand() & 127, 0, 0);
                 }
             }
-
+//            writeStr(tbuf, 7, 3, "Classic Snow", 0, 0, 0);
         }
-        #if HORIZONTAL_DOUBLING == 1
-            else if (at == 9) {
-                // run length encoding video
-                // badgers & mushrooms
-                memset(tbuf, 0, BUF_SIZE);
+#if HORIZONTAL_DOUBLING == 1
+        else if (at == 9) {
+            // run length encoding video
+            // badgers & mushrooms
+            memset(tbuf, 0, BUF_SIZE);
 
-                if (mushroomat == 0) {
-                    int8_t* currentframe = badgerframes[currentbadgerframe];
-                    int8_t *idx = tbuf;
+            if (mushroomat == 0) {
+                int8_t* currentframe = badgerframes[currentbadgerframe];
+                int8_t *idx = tbuf;
 
-                    for (uint32_t j = 0; j < badgerframelengths[currentbadgerframe]; j++) {
-                        for (uint8_t i = 0; i < currentframe[j*4 + 3]; i++) {
-                            // replicate the specified pixel that number of times
-                            *(idx++) = currentframe[j*4 + 0];
-                            *(idx++) = currentframe[j*4 + 1];
-                            *(idx++) = currentframe[j*4 + 2];
-                        }
+                for (uint32_t j = 0; j < badgerframelengths[currentbadgerframe]; j++) {
+                    for (uint8_t i = 0; i < currentframe[j*4 + 3]; i++) {
+                        // replicate the specified pixel that number of times
+                        *(idx++) = currentframe[j*4 + 0];
+                        *(idx++) = currentframe[j*4 + 1];
+                        *(idx++) = currentframe[j*4 + 2];
                     }
+                }
 
-                    if (currentbadgerframe < NUM_BADGERFRAMES-1) { // minus one so it's for the next iteration around
-                        if (buf) { // the video is 25 fps, but display is 50, so only update every other frame
-                            currentbadgerframe++;
-                        }
-                    }
-                    else {
-                        currentbadgerframe = 0;
-                        mushroomat = 1;
-                        mushroomtime = time();
+                if (currentbadgerframe < NUM_BADGERFRAMES-1) { // minus one so it's for the next iteration around
+                    if (buf) { // the video is 25 fps, but display is 50, so only update every other frame
+                        currentbadgerframe++;
                     }
                 }
                 else {
-                    if (mushroomat == 1) {
-                        memcpy(tbuf, mushroom1png, BUF_SIZE);
+                    currentbadgerframe = 0;
+                    mushroomat = 1;
+                    mushroomtime = time();
+                }
+            }
+            else {
+                if (mushroomat == 1) {
+                    memcpy(tbuf, mushroom1png, BUF_SIZE);
+                }
+                else {
+                    memcpy(tbuf, mushroom2png, BUF_SIZE);
+                }
+                if (time() - mushroomtime > 1.65*1e6) {
+                    mushroomat = 0;
+                }
+                else if (time() - mushroomtime > 0.65*1e6) {
+                    mushroomat = 2;
+                }
+            }
+//            writeStr(tbuf, 7, 3, "Badger Badger Badger", 127, 127, 127);
+        }
+#endif
+#if HORIZONTAL_DOUBLING == 1
+        else if (at == 10) {
+            // bad apple demo
+            // plasma video effect:
+            //     https://rosettacode.org/wiki/Plasma_effect
+            //     https://samuel-lereah.com/articles/CS/making-plasma-effects 
+            memset(tbuf, 0, BUF_SIZE);
+
+            uint32_t xcoord, ycoord; // screen coordinates
+            int8_t y, u, v; // colour at screen coordinate
+
+            // combine three sine waves to make the plasma effect
+            // the plasma intensity is mapped to hsv via a colourmap
+            uint32_t phase1 = ((time()*64)/1000000) % 128;
+            uint32_t phase2 = ((time()*48)/1000000) % 128;
+            uint32_t phase3 = ((time()*24)/1000000) % 128;
+            int32_t val1, val2, val3;
+            uint8_t r; // the final intensity of the plasma
+
+            bool currentcolour = false; // only set colour in place of white (trye)
+
+            uint8_t* currentframe = badappleframes[currentbadappleframe];
+            uint32_t pixelnum = 0;
+
+            // run through each frame, decode it, and set the current buffer to either black or white (plasma)
+            for (uint32_t j = 0; j < badappleframelengths[currentbadappleframe]; j++) {
+                for (uint8_t i = 0; i < currentframe[j]; i++) {
+
+                    if (currentcolour) {
+                        xcoord = pixelnum % XRESOLUTION;
+                        ycoord = pixelnum / YRESOLUTION;
+
+                        val1 = (plasmavals[0] * xcoord + plasmavals[1] * ycoord ) / plasmavals[2] + phase1;
+                        val2 = (plasmavals[3] * xcoord + plasmavals[4] * ycoord ) / plasmavals[5] + phase2;
+                        val3 = (plasmavals[6] * xcoord + plasmavals[7] * ycoord ) / plasmavals[8] + phase3;
+
+                        // needs to end up 0-63, sine table ranges 0-128 so mod to get in range
+                        // the table returns -127 to 127 so add + numthings*128 to remove negatives
+                        //  then divide by numthings*4 to end up offset 0-63
+                        r = ((sine_table[val1 % 128] + sine_table[val2 % 128] + sine_table[val3 % 128]) + 3*128) / (3*4);
+                        rgb2yuv(hsv[r][0], hsv[r][1], hsv[r][2], y, u, v);
                     }
                     else {
-                        memcpy(tbuf, mushroom2png, BUF_SIZE);
+                        y = 0;
+                        u = 0;
+                        v = 0;
                     }
-                    if (time() - mushroomtime > 1.65*1e6) {
-                        mushroomat = 0;
-                    }
-                    else if (time() - mushroomtime > 0.65*1e6) {
-                        mushroomat = 2;
+
+                    tbuf[pixelnum * 3 + 0] = currentcolour ? y : 0; // 127 : 0
+                    tbuf[pixelnum * 3 + 1] = currentcolour ? u : 0;
+                    tbuf[pixelnum * 3 + 2] = currentcolour ? v : 0;
+
+                    pixelnum++;
+                }
+                // the current colour is either black or white, we swap because black & white video
+                // is encoded where each byte is the number of black, then number of white, etc
+                currentcolour = !currentcolour;
+            }
+
+            if (buf) { // the video is 25 fps, but display is 50, so only update every other frame
+                currentbadappleframe++;
+                if (currentbadappleframe == NUM_BADAPPLEFRAMES) {
+                    currentbadappleframe = 0;
+                }
+
+                if (currentbadappleframe >= 126) { // there's a matching value to change above
+                    badapplehue += 1.0;
+                }
+
+                if (badapplehue >= 360) {
+                    badapplehue = 0;
+                }
+
+                if (currentbadappleframe % (DEMO_DURATION*25) == 0) {
+                    // cycle the plasma each time
+                    for (uint8_t i = 0; i < 9; i++) {
+                        if (rand() > 0.5) {
+                            plasmavals[i] = randi(2, 10);
+                        }
+                        else {
+                            plasmavals[i] = randi(-10, -2);
+                        }
                     }
                 }
-    #endif
-        } // end of demo selection
+            }
+//            writeStr(tbuf, 7, 3, "Bad Apple", 0, 0, 0);
+        }
+#endif
+        // end of demo selection
 
         if (at > 2) {
             char txtbuf[20];
@@ -452,7 +552,7 @@ int main() {
 
         cp.setBuf(tbuf);
         
-        if (time() - demo_start_time > 5*1e6) {
+        if (time() - demo_start_time > DEMO_DURATION*1e6) {
             at++;
             demo_start_time = time();
             if (at == 7) {
