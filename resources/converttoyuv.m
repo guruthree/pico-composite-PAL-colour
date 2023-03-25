@@ -54,15 +54,15 @@ pkg load image % for octave
             out = sprintf('%s 0x%x,', out, y);
 
             if u >= 0
-                out = sprintf('%s 0x%x,', out, u);
+                out = sprintf('%s  0x%02x,', out, u);
             else
-                out = sprintf('%s -0x%x,', out, -u);
+                out = sprintf('%s -0x%02x,', out, -u);
             end
 
             if v >= 0
-                out = sprintf('%s 0x%x,', out, v);
+                out = sprintf('%s  0x%02x,', out, v);
             else
-                out = sprintf('%s -0x%x,', out, -v);
+                out = sprintf('%s -0x%02x,', out, -v);
             end
         end
 
