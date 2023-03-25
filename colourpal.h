@@ -92,7 +92,7 @@ const uint32_t PIXELS_B = XRESOLUTION - PIXELS_A;
 // no these are not the standard equations
 // part of that is integer maths, fine, but other wise...
 // v and u are swapped...
-inline void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int32_t &y, int32_t &u, int32_t &v) {
+inline void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, int8_t &y, int8_t &u, int8_t &v) {
     y = 5 * r / 16 + 9 * g / 16 + b / 8; // luminance
     v = (b - y) / 2;
     u = 13 * (r - y) / 16;
@@ -128,7 +128,7 @@ inline void setPixelRGB(int8_t *buf, int32_t xcoord, int32_t ycoord, uint8_t r, 
         // clipping
         return;
     }
-    int32_t y = 0, u = 0, v = 0;
+    int8_t y = 0, u = 0, v = 0;
     rgb2yuv(r, g, b, y, u, v);
 
     setPixelYUV(buf, xcoord, ycoord, y, u, v);
@@ -152,7 +152,7 @@ inline void setPixelRGBtwoX(int8_t *buf, int32_t xcoord, int32_t ycoord, uint8_t
         // clipping
         return;
     }
-    int32_t y = 0, u = 0, v = 0;
+    int8_t y = 0, u = 0, v = 0;
     rgb2yuv(r, g, b, y, u, v);
 
     setPixelYUVtwoX(buf, xcoord, ycoord, y, u, v);
@@ -322,7 +322,7 @@ class ColourPal {
             // so compenstate
             for (uint32_t i = 0; i < SAMPLES_COLOUR - SAMPLES_PER_PIXEL * 8; i++) {
 
-                int32_t y, u, v;
+                int8_t y, u, v;
                 if (i < (SAMPLES_COLOUR / 8) - SAMPLES_PER_PIXEL)
                     rgb2yuv(127, 127, 127, y, u, v);
                 else if (i < (2 * SAMPLES_COLOUR / 8) - SAMPLES_PER_PIXEL*2)
