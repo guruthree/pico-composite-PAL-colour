@@ -47,7 +47,7 @@ ysize = 110;
 % framerange = 1:5478;
 
 % show 5 seconds of video at a time skipping a few sections
-startframes = ([0:6:42]*5)*25+1;
+startframes = ([0:7:42]*5)*25+1;
 endframes = startframes + 124;
 framerange = [];
 for ii=1:length(startframes)
