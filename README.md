@@ -2,7 +2,9 @@
 
 Trying to get the [Raspberry Pi RP2040](https://www.raspberrypi.com/documentation/microcontrollers/rp2040.html) chip's PIO to generate a colour PAL composite video signal, using only a [resistor ladder](https://en.wikipedia.org/wiki/Resistor_ladder) digital-to-analogue converter (DAC).
 
-![Photograph of a CRT screen running the code](resources/onacrt.jpg)
+A YouTube video showing it in action:
+
+[![Raspberry Pi Pico generated colour composite PAL video demos, early 2023](resources/youtube-thumb.jpg)](https://youtu.be/7H631LBkxes)
 
 **WARNING: THERE IS A CHANCE THIS SOFTWARE MAY DAMAGE YOUR PICO. I TAKE NO RESPONSIBILITY.**
 I'm running the RP2040 at 312 MHz. This is a 141% overclock (or 241% of stock) with a 1.2 VREG voltage. The clock divider on the PIO is about 9. It is a lot of data to process in not a very long period of time (64 microseconds). I believe I have partially broken at least one RP2040 working on this - it no longer registers when plugged into some computers and the GPIO seems to have 5 V coming out.
