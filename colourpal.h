@@ -43,6 +43,14 @@
 #define YDATA_START 43 // line number
 #define YDATA_END (YDATA_START + YRESOLUTION*2)
 
+//lines 1-5 with sync info
+//lines 6-42 blank
+//data start line 43
+//data end line 262
+//lines 263-309 blank
+//lines 310-312 with sync info
+//312 last line
+
 // PAL timings - these are here as consts because the division needs to process
 // a horizontal line is 64 microseconds
 // this HAS to be divisible by 4 to use 32-bit DMA transfers
@@ -51,6 +59,7 @@
 const uint32_t SAMPLES_PER_LINE = 4*((uint32_t)((64 * DAC_FREQ / 1e6)/4)); // this HAS to be a multiple of 4!
 const uint32_t SAMPLES_GAP = 4.7 * DAC_FREQ / 1e6; // 312
 const uint32_t SAMPLES_SHORT_PULSE = 2.35 * DAC_FREQ / 1e6; // the time of the little blip down mid line
+const uint32_t SAMPLES_LONG_PULSE = 23.5 * DAC_FREQ / 1e6; // used in lines 1-3
 const uint32_t SAMPLES_HSYNC = 4.7 * DAC_FREQ / 1e6; // horizontal sync duration
 const uint32_t SAMPLES_BACK_PORCH = 5.7 * DAC_FREQ / 1e6; // back porch duration
 const uint32_t SAMPLES_FRONT_PORCH = 1.7 * DAC_FREQ / 1e6; // front porch duration
@@ -274,8 +283,9 @@ class ColourPal {
             memset(line3_B, levelBlank, SAMPLES_COLOUR);
             memset(line4_B, levelBlank, SAMPLES_COLOUR);
             memset(line6_B, levelBlank, SAMPLES_COLOUR); // this one is easy, nothing else needed
-
-            memset(line1_A + SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_HSYNC + SAMPLES_BACK_PORCH);
+            
+            const uint32_t longPulseLengthA = MIN(SAMPLES_LONG_PULSE, SAMPLES_SYNC_PORCHES - SAMPLES_DEAD_SPACE - SAMPLES_FRONT_PORCH);
+            memset(line1_A + SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH, levelSync, longPulseLengthA);
             memset(line4_A + SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_SHORT_PULSE);
             memset( line6odd_A + SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_HSYNC);
             memset(line6even_A + SAMPLES_DEAD_SPACE + SAMPLES_FRONT_PORCH, levelSync, SAMPLES_HSYNC);
