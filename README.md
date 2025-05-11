@@ -32,6 +32,23 @@ The way the code is set up, it will run through a collection of numbered demos, 
 9. A portion of Weebl's Badger Badger Badger flash animation, rendered as run length encoded video
 10. Bad Apple overlayed with the classic [plasma effect](https://en.wikipedia.org/wiki/Plasma_effect)
 
+### Build in VS Code ###
+
+Open this repository folder in VS Code
+Install [Raspberry Pi Pico extension](https://marketplace.visualstudio.com/items?itemName=raspberry-pi.raspberry-pi-pico). It will automatically install Cmake extension, Cmake Tools extension.
+
+1. Go to Pi Pico extension -> Import Project, select this repository folder again, pres Import
+2. Pi Pico extension -> Compile Project
+
+Then have multiple options to upload compiled firmware:
+1. Connect Pi in BOOTSEL mode 
+2. Copy build/pico-composite-PAL-colour.elf to Removable drive that appears
+
+Or
+1. Connect Pi in BOOTSEL mode
+2. Pi Pico extension -> Run Project(USB)
+3. If fails on Windows, you may need to install "WinUSB" driver to RP2 Boot (Interface **1**) via [Zadig tool](http://zadig.akeo.ie/), and try again. See [Getting started with Pico](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf) for more info on this.
+
 ## Resources ##
 
 A bit of research was needed to understand how composite video and colour composite video work, and how I could make it work on the Pico. I found these resources quite helpful.

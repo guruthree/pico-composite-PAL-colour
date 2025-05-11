@@ -76,7 +76,7 @@ int8_t buf0[BUF_SIZE];
 int8_t buf1[BUF_SIZE];
 
 #include "random.h"
-#include "time.h"
+#include "time_utils.h"
 #include "font.h"
 #include "testcardf.h"
 #include "raspberrypi.h"
